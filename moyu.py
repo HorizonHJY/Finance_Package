@@ -1,59 +1,13 @@
-import os
-import datetime
-import tkinter as tk
-from tkinter import messagebox
+import pyautogui
+import threading
+import time
 
-# 日志文件设置
-log_dir = os.path.expanduser("~/FishLog")
-log_file = os.path.join(log_dir, "moyu_log.txt")
-os.makedirs(log_dir, exist_ok=True)
-
-# 读取已有日志
-if os.path.exists(log_file):
-    with open(log_file, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-else:
-    lines = []
-
-# 统计信息
-total_minutes = 0
-today_total = 0
-today = datetime.datetime.now().strftime("%Y-%m-%d")
-unique_days = set()
-
-for line in lines:
-    if line.startswith("日期") or not line.strip():
-        continue
-    try:
-        date_str, _, minutes_str = line.strip().split("\t")
-        minutes = int(minutes_str)
-        total_minutes += minutes
-        if date_str == today:
-            today_total += minutes
-        unique_days.add(date_str)
-    except:
-        continue
-
-# 已解锁成就
-achievements = set()
-if total_minutes >= 60:
-    achievements.add("🐟 累计摸鱼超过 1 小时")
-if total_minutes >= 300:
-    achievements.add("🌊 摸鱼达人：累计 5 小时")
-if today_total >= 60:
-    achievements.add("📅 今日摸鱼满 1 小时")
-if len(unique_days) >= 5:
-    achievements.add("📆 连续摸鱼 5 天成就")
-
-# GUI 主界面
-root = tk.Tk()
-root.title("摸鱼时间小助手")
-
-label = tk.Label(root, text="请输入本次摸鱼时间（分钟）:")
-label.pack(pady=10)
-
-entry = tk.Entry(root)
-entry.pack(pady=5)
+def simulate_mouse_move(duration_min):
+    end_time = time.time() + duration_min * 60
+    while time.time() < end_time:
+        pyautogui.move(1, 0)
+        pyautogui.move(-1, 0)
+        time.sleep(60)  # 每分钟动一次
 
 def start_moyu():
     global total_minutes, today_total, achievements
@@ -80,6 +34,9 @@ def start_moyu():
     today_total += mins
     unique_days.add(date_str)
 
+    # 启动鼠标后台线程
+    threading.Thread(target=simulate_mouse_move, args=(mins,), daemon=True).start()
+
     msg = f"✅ 本次摸鱼 {mins} 分钟已记录\n📅 今天累计：{today_total} 分钟\n📊 总计：{total_minutes} 分钟"
 
     # 成就解锁
@@ -97,9 +54,4 @@ def start_moyu():
         achievements.update(new_achievements)
         msg += "\n\n🎉 解锁成就：\n" + "\n".join(new_achievements)
 
-    messagebox.showinfo("摸鱼完成", msg)
-
-button = tk.Button(root, text="开始摸鱼", command=start_moyu)
-button.pack(pady=10)
-
-root.mainloop()
+    messagebox.showinfo("摸鱼已启动", msg)
