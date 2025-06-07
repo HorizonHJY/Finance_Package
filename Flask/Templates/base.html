@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div class="container" style="height: 80vh;">
+    <form action ="{{url_for('test')}}" method = "post">
+        <table id = "table" class="table table-striped table-hover table-bordered">
+            <tr>
+                <td>
+                    <select id = "products" name ="products" class = "form-control">
+                        <option value="">{{ item }}</option>
+                        {% for item in products %}
+                        <option value="{{ item }}">{{ item }}</option>
+                        {% endfor %}
+                        </option>
+                    </select>
+                    <select id = "country" name ="country" class = "form-control">
+                        {% for item in countrys %}
+                        <option value="{{ item }}">{{ item }}</option>
+                        {% endfor %}
+                        </option>
+                    </select>
+                </td>
+            </tr>
+        </table>
+    </form>
+</div>
+<script>
+    function add() {
+        $('mytable tbody>tr:last').clone(true).insertafter('#mytable tbody>tr:last');
+        $('mytable tbody>tr:last').val('')
+        return False;
+    }
+</script>
+</body>
+</html>

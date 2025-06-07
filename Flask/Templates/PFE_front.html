@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Curve Root Selector</title>
+
+    <!-- Bootstrap 4.1.0 -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
+
+    <!-- Bootstrap Select for searchable dropdowns -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/css/bootstrap-select.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- ✅ 加上这一行：Popper.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js"></script>
+
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/js/bootstrap-select.min.js"></script>
+
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Select Commodity and Destination</h2>
+
+        <label for="commodity">Commodity:</label>
+        <select id="commodity" class="selectpicker horizon-form-control" data-live-search="true" onchange="onCommodityChange()">
+            <option value="">--All Commodities--</option>
+            {% for c in commodities %}
+                <option value="{{ c }}">{{ c }}</option>
+            {% endfor %}
+        </select>
+
+        <br><br>
+
+        <label for="destination">Destination:</label>
+        <select id="destination" class="selectpicker horizon-form-control" data-live-search="true" onchange="onDestinationChange()">
+            <option value="">--All Destinations--</option>
+            {% for d in destinations %}
+                <option value="{{ d }}">{{ d }}</option>
+            {% endfor %}
+        </select>
+
+        <div class="horizon-section mt-3">
+            <label class="horizon-label">Direction:</label>
+            <label class="horizon-radio">
+                <input type="radio" name="direction" value="Buy" checked> Buy
+            </label>
+            <label class="horizon-radio">
+                <input type="radio" name="direction" value="Sell"> Sell
+            </label>
+        </div>
+
+        <button onclick="applyBatch()">Apply Direction to All</button>
+        <button onclick="fetchCurveRoot()">Get Curve Root</button>
+        <p id="result"></p>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            $('.selectpicker').selectpicker();
+        });
+
+        function onCommodityChange() {
+            const commodity = document.getElementById("commodity").value;
+            const destinationSelect = document.getElementById("destination");
+            const selectedDestination = destinationSelect.value;
+
+            fetch("/get_destinations", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ commodity })
+            })
+            .then(res => res.json())
+            .then(data => {
+                destinationSelect.innerHTML = '<option value="">--All Destinations--</option>';
+                data.forEach(d => {
+                    const opt = document.createElement("option");
+                    opt.value = d;
+                    opt.textContent = d;
+                    destinationSelect.appendChild(opt);
+                });
+
+                if (!data.includes(selectedDestination)) {
+                    destinationSelect.value = "";
+                } else {
+                    destinationSelect.value = selectedDestination;
+                }
+
+                $('.selectpicker').selectpicker('refresh');
+            });
+        }
+
+        function onDestinationChange() {
+            const destination = document.getElementById("destination").value;
+            const commoditySelect = document.getElementById("commodity");
+            const selectedCommodity = commoditySelect.value;
+
+            fetch("/get_commodities", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ destination })
+            })
+            .then(res => res.json())
+            .then(data => {
+                commoditySelect.innerHTML = '<option value="">--All Commodities--</option>';
+                data.forEach(c => {
+                    const opt = document.createElement("option");
+                    opt.value = c;
+                    opt.textContent = c;
+                    commoditySelect.appendChild(opt);
+                });
+
+                if (!data.includes(selectedCommodity)) {
+                    commoditySelect.value = "";
+                } else {
+                    commoditySelect.value = selectedCommodity;
+                }
+
+                $('.selectpicker').selectpicker('refresh');
+            });
+        }
+
+        function getDirection() {
+            const radios = document.getElementsByName("direction");
+            for (let r of radios) {
+                if (r.checked) return r.value;
+            }
+            return "Buy";
+        }
+
+        function applyBatch() {
+            const direction = getDirection();
+            alert("Batch applied: " + direction);
+        }
+
+        function fetchCurveRoot() {
+            const commodity = document.getElementById("commodity").value;
+            const destination = document.getElementById("destination").value;
+            const direction = getDirection();
+            fetch("/get_curve_root", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ commodity, destination })
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById("result").innerText = "Curve Root: " + data.curve_root + " (" + direction + ")";
+            });
+        }
+    </script>
+</body>
+</html>

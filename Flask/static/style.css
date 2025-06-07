@@ -1,0 +1,67 @@
+.container{
+    display: block;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+/* 通用样式 */
+.horizon-form-control {
+  display: inline-block;
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #333;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+/* 聚焦样式 */
+.horizon-form-control:focus {
+  outline: none;
+  border-color: #66afe9;
+  box-shadow: 0 0 1px 1px #66afe9;
+}
+.horizon-section {
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #f5f8ff;
+    border: 1px solid #b8c6e1;
+    border-radius: 8px;
+    width: fit-content;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+}
+
+.horizon-label {
+    font-weight: bold;
+    margin-right: 10px;
+    font-size: 16px;
+    color: #1f3c88;
+}
+
+.horizon-radio {
+    margin-right: 20px;
+    font-size: 14px;
+    color: #2d4059;
+}
+
+.horizon-radio input {
+    margin-right: 5px;
+}
+
+button {
+    padding: 6px 14px;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    background-color: #4a89dc;
+    color: white;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+button:hover {
+    background-color: #357bd8;
+}
