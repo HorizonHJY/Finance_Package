@@ -1,6 +1,6 @@
-Horizon's Finance Package 🤖✨
+##Horizon's Finance Package 🤖✨
 
-出自Horizon之手，这是一套富有趣味与功能的金融工具和网页应用....
+#出自Horizon之手，这是一套富有趣味与功能的金融工具和网页应用....
 
 # 克隆仓库
 git clone https://github.com/HorizonHJY/Finance_Package.git
