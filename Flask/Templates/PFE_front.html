@@ -1,154 +1,168 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Curve Root Selector</title>
-
-    <!-- Bootstrap 4.1.0 -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
-
-    <!-- Bootstrap Select for searchable dropdowns -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/css/bootstrap-select.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-    <!-- ✅ 加上这一行：Popper.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js"></script>
-
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/js/bootstrap-select.min.js"></script>
-
-
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8">
+  <title>Curve Root Selector</title>
+  <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
+  <style>
+    .delete-row, .duplicate-row { margin-top: .5rem; margin-right: .5rem; }
+    .direction-group { display: flex; gap: 1rem; }
+  </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <h2>Select Commodity and Destination</h2>
+  <div class="container mt-5">
+    <h2>Select Commodity, Destination & Deliver Date</h2>
 
-        <label for="commodity">Commodity:</label>
-        <select id="commodity" class="selectpicker horizon-form-control" data-live-search="true" onchange="onCommodityChange()">
-            <option value="">--All Commodities--</option>
-            {% for c in commodities %}
-                <option value="{{ c }}">{{ c }}</option>
-            {% endfor %}
-        </select>
+    <!-- datalist for search -->
+    <datalist id="commodities-list">
+      {% for c in commodities %}
+        <option value="{{ c }}">
+      {% endfor %}
+    </datalist>
 
-        <br><br>
+    <form id="pfe-form">
+      <table class="table table-bordered" id="selection-table">
+        <thead>
+          <tr>
+            <th>Commodity</th>
+            <th>Destination</th>
+            <th>Direction</th>
+            <th>Deliver Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="selection-row">
+            <td>
+              <input type="text" name="commodity[]" list="commodities-list"
+                     class="form-control commodity-input"
+                     placeholder="--Select Commodity--">
+            </td>
+            <td>
+              <select name="destination[]" class="form-control destination-select">
+                <option value="">--Select Destination--</option>
+              </select>
+            </td>
+            <td>
+              <div class="direction-group">
+                <label><input type="radio" name="direction_0" value="Buy" checked> Buy</label>
+                <label><input type="radio" name="direction_0" value="Sell"> Sell</label>
+              </div>
+            </td>
+            <td>
+              <input type="date" name="deliver_date[]" class="form-control">
+            </td>
+            <td>
+              <button type="button" class="btn btn-secondary btn-sm duplicate-row">Duplicate</button>
+              <button type="button" class="btn btn-danger btn-sm delete-row">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-        <label for="destination">Destination:</label>
-        <select id="destination" class="selectpicker horizon-form-control" data-live-search="true" onchange="onDestinationChange()">
-            <option value="">--All Destinations--</option>
-            {% for d in destinations %}
-                <option value="{{ d }}">{{ d }}</option>
-            {% endfor %}
-        </select>
+      <button type="button" id="add-row-btn" class="btn btn-primary">Add Row</button>
+      <button type="button" id="fetch-btn"    class="btn btn-success">Get Curve Roots</button>
+    </form>
 
-        <div class="horizon-section mt-3">
-            <label class="horizon-label">Direction:</label>
-            <label class="horizon-radio">
-                <input type="radio" name="direction" value="Buy" checked> Buy
-            </label>
-            <label class="horizon-radio">
-                <input type="radio" name="direction" value="Sell"> Sell
-            </label>
-        </div>
-
-        <button onclick="applyBatch()">Apply Direction to All</button>
-        <button onclick="fetchCurveRoot()">Get Curve Root</button>
-        <p id="result"></p>
+    <div class="mt-3">
+      <h5>Results:</h5>
+      <div id="results-container"></div>
     </div>
+  </div>
 
-    <script>
-        $(document).ready(function () {
-            $('.selectpicker').selectpicker();
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>
+  $(function(){
+    // Add Row: clone and reset
+    $('#add-row-btn').on('click', function(){
+      cloneRow(-1);
+    });
+
+    // Delete handler
+    $(document).on('click', '.delete-row', function(){
+      if($('#selection-table tbody tr.selection-row').length > 1){
+        $(this).closest('tr').remove();
+      }
+    });
+
+    // Duplicate handler
+    $(document).on('click', '.duplicate-row', function(){
+      const idx = $('#selection-table tbody tr.selection-row').index($(this).closest('tr'));
+      cloneRow(idx);
+    });
+
+    // Helper to clone row. if idx < 0, clone last; else clone at idx
+function cloneRow(idx){
+  const rows = $('#selection-table tbody tr.selection-row');
+  const source = idx < 0 ? rows.last() : rows.eq(idx);
+  const $clone = source.clone(false);
+  const newIndex = $('#selection-table tbody tr.selection-row').length;
+
+  // Reset inputs
+  $clone.find('.commodity-input').val('');
+  $clone.find('.destination-select').html('<option value="">--Select Destination--</option>');
+  $clone.find('input[type="date"]').val('');
+  $clone.find('input[type="radio"]').each(function(){
+    const $r = $(this);
+    $r.attr('name', 'direction_' + newIndex)
+      .prop('checked', $r.val() === 'Buy');
+  });
+
+  // 移除了重复的事件绑定代码
+
+  $clone.addClass('selection-row');
+  $('#selection-table tbody').append($clone);
+}
+
+    // Commodity -> Destination cascade
+    $(document).on('input', '.commodity-input', function(){
+      const $row = $(this).closest('tr');
+      const comm = $(this).val();
+      const $dest = $row.find('.destination-select');
+      $dest.html('<option value="">--Select Destination--</option>');
+      if(!comm) return;
+      fetch('/get_destinations',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({commodity:comm})
+      }).then(r=>r.json()).then(list=>{
+        list.forEach(d=> $dest.append(`<option value="${d}">${d}</option>`));
+      });
+    });
+
+    // Destination -> Commodity validation
+    $(document).on('change', '.destination-select', function(){
+      const $row = $(this).closest('tr');
+      const dest = $(this).val();
+      const $comm = $row.find('.commodity-input');
+      if(!dest) return;
+      fetch('/get_commodities',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({destination:dest})
+      }).then(r=>r.json()).then(list=>{
+        if(!list.includes($comm.val())) $comm.val('');
+      });
+    });
+
+    // Fetch Curve Roots
+    $('#fetch-btn').on('click', function(){
+      $('#results-container').empty();
+      $('#selection-table tbody tr.selection-row').each(function(i,tr){
+        const $tr = $(tr);
+        const comm = $tr.find('.commodity-input').val();
+        const dest = $tr.find('.destination-select').val();
+        const dir = $tr.find(`input[name="direction_${i}"]:checked`).val();
+        fetch('/get_curve_root',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({commodity:comm,destination:dest})
+        }).then(r=>r.json()).then(data=>{
+          $('#results-container').append(
+            `<p>Row ${i+1}: ${comm}-${dest} → ${data.curve_root} (${dir})</p>`
+          );
         });
-
-        function onCommodityChange() {
-            const commodity = document.getElementById("commodity").value;
-            const destinationSelect = document.getElementById("destination");
-            const selectedDestination = destinationSelect.value;
-
-            fetch("/get_destinations", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ commodity })
-            })
-            .then(res => res.json())
-            .then(data => {
-                destinationSelect.innerHTML = '<option value="">--All Destinations--</option>';
-                data.forEach(d => {
-                    const opt = document.createElement("option");
-                    opt.value = d;
-                    opt.textContent = d;
-                    destinationSelect.appendChild(opt);
-                });
-
-                if (!data.includes(selectedDestination)) {
-                    destinationSelect.value = "";
-                } else {
-                    destinationSelect.value = selectedDestination;
-                }
-
-                $('.selectpicker').selectpicker('refresh');
-            });
-        }
-
-        function onDestinationChange() {
-            const destination = document.getElementById("destination").value;
-            const commoditySelect = document.getElementById("commodity");
-            const selectedCommodity = commoditySelect.value;
-
-            fetch("/get_commodities", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ destination })
-            })
-            .then(res => res.json())
-            .then(data => {
-                commoditySelect.innerHTML = '<option value="">--All Commodities--</option>';
-                data.forEach(c => {
-                    const opt = document.createElement("option");
-                    opt.value = c;
-                    opt.textContent = c;
-                    commoditySelect.appendChild(opt);
-                });
-
-                if (!data.includes(selectedCommodity)) {
-                    commoditySelect.value = "";
-                } else {
-                    commoditySelect.value = selectedCommodity;
-                }
-
-                $('.selectpicker').selectpicker('refresh');
-            });
-        }
-
-        function getDirection() {
-            const radios = document.getElementsByName("direction");
-            for (let r of radios) {
-                if (r.checked) return r.value;
-            }
-            return "Buy";
-        }
-
-        function applyBatch() {
-            const direction = getDirection();
-            alert("Batch applied: " + direction);
-        }
-
-        function fetchCurveRoot() {
-            const commodity = document.getElementById("commodity").value;
-            const destination = document.getElementById("destination").value;
-            const direction = getDirection();
-            fetch("/get_curve_root", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ commodity, destination })
-            })
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById("result").innerText = "Curve Root: " + data.curve_root + " (" + direction + ")";
-            });
-        }
-    </script>
+      });
+    });
+  });
+  </script>
 </body>
 </html>
