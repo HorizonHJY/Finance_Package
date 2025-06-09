@@ -8,6 +8,15 @@
   <style>
     .delete-row, .duplicate-row { margin-top: .5rem; margin-right: .5rem; }
     .direction-group { display: flex; gap: 1rem; }
+    .clear-btn {
+      cursor: pointer;
+      padding: 0 10px;
+      background: transparent;
+      border: 1px solid #ced4da;
+      border-left: none;
+    }
+    .clear-btn:hover { background: #f8f9fa; }
+    .input-group-append { margin-left: -1px; }
   </style>
 </head>
 <body>
@@ -35,9 +44,14 @@
         <tbody>
           <tr class="selection-row">
             <td>
-              <input type="text" name="commodity[]" list="commodities-list"
-                     class="form-control commodity-input"
-                     placeholder="--Select Commodity--">
+              <div class="input-group">
+                <input type="text" name="commodity[]" list="commodities-list"
+                      class="form-control commodity-input"
+                      placeholder="--Select Commodity--">
+                <div class="input-group-append">
+                  <button class="clear-btn" type="button">×</button>
+                </div>
+              </div>
             </td>
             <td>
               <select name="destination[]" class="form-control destination-select">
@@ -51,7 +65,9 @@
               </div>
             </td>
             <td>
-              <input type="date" name="deliver_date[]" class="form-control">
+              <select name="deliver_date[]" class="form-control deliver-month-select">
+                <option value="">--Select Month--</option>
+              </select>
             </td>
             <td>
               <button type="button" class="btn btn-secondary btn-sm duplicate-row">Duplicate</button>
@@ -74,73 +90,152 @@
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script>
   $(function(){
-    // Add Row: clone and reset
+    function loadAvailableMonths() {
+      fetch('/get_available_months')
+        .then(r => r.json())
+        .then(months => {
+          $('.deliver-month-select').each(function(){
+            const $sel = $(this);
+            const currentVal = $sel.val();
+            $sel.html('<option value="">--Select Month--</option>');
+            months.forEach(m => {
+              $sel.append(`<option value="${m}">${m}</option>`);
+            });
+            if(currentVal) {
+              $sel.val(currentVal);
+            }
+          });
+        });
+    }
+
+    // 页面加载时填充下拉月份
+    loadAvailableMonths();
+
+    // Add Row - 添加空白行
     $('#add-row-btn').on('click', function(){
-      cloneRow(-1);
+      const $source = $('#selection-table tbody tr.selection-row').first();
+      const $clone = $source.clone();
+      const newIndex = $('#selection-table tbody tr.selection-row').length;
+
+      // 清空所有输入
+      $clone.find('.commodity-input').val('');
+      $clone.find('.destination-select').html('<option value="">--Select Destination--</option>');
+      $clone.find('.deliver-month-select').val('');
+
+      // 更新radio按钮
+      $clone.find('input[type="radio"]').each(function(){
+        $(this).attr('name', 'direction_' + newIndex)
+               .prop('checked', $(this).val() === 'Buy');
+      });
+
+      // 添加到表格
+      $('#selection-table tbody').append($clone);
+
+      loadAvailableMonths();
     });
 
-    // Delete handler
+    // Delete Row
     $(document).on('click', '.delete-row', function(){
       if($('#selection-table tbody tr.selection-row').length > 1){
         $(this).closest('tr').remove();
       }
     });
 
-    // Duplicate handler
+    // Duplicate Row - 复制当前行并保留所有值
     $(document).on('click', '.duplicate-row', function(){
-      const idx = $('#selection-table tbody tr.selection-row').index($(this).closest('tr'));
-      cloneRow(idx);
+      const $source = $(this).closest('tr');
+      const originalComm = $source.find('.commodity-input').val();
+      const originalDest = $source.find('.destination-select').val();
+      const originalDate = $source.find('.deliver-month-select').val();
+      const originalDirection = $source.find('input[type="radio"]:checked').val();
+
+      // 克隆行
+      const $clone = $source.clone();
+      const newIndex = $('#selection-table tbody tr.selection-row').length;
+
+      // 更新radio按钮的name属性
+      $clone.find('input[type="radio"]').each(function(){
+        $(this).attr('name', 'direction_' + newIndex);
+      });
+
+      // 设置选中的radio按钮
+      $clone.find(`input[type="radio"][value="${originalDirection}"]`).prop('checked', true);
+
+      // 添加到表格
+      $('#selection-table tbody').append($clone);
+
+      // 设置commodity值
+      $clone.find('.commodity-input').val(originalComm);
+
+      // 触发commodity输入事件以加载destination
+      if(originalComm) {
+        $clone.find('.commodity-input').trigger('input');
+
+        // 设置destination的值
+        setTimeout(() => {
+          $clone.find('.destination-select').val(originalDest);
+        }, 100);
+      }
+
+      // 设置deliver date的值
+      $clone.find('.deliver-month-select').val(originalDate);
+
+      loadAvailableMonths();
     });
 
-    // Helper to clone row. if idx < 0, clone last; else clone at idx
-function cloneRow(idx){
-  const rows = $('#selection-table tbody tr.selection-row');
-  const source = idx < 0 ? rows.last() : rows.eq(idx);
-  const $clone = source.clone(false);
-  const newIndex = $('#selection-table tbody tr.selection-row').length;
+    // Clear input
+    $(document).on('click', '.clear-btn', function(){
+      const $input = $(this).closest('.input-group').find('.commodity-input');
+      $input.val('').trigger('input').focus();
+    });
 
-  // Reset inputs
-  $clone.find('.commodity-input').val('');
-  $clone.find('.destination-select').html('<option value="">--Select Destination--</option>');
-  $clone.find('input[type="date"]').val('');
-  $clone.find('input[type="radio"]').each(function(){
-    const $r = $(this);
-    $r.attr('name', 'direction_' + newIndex)
-      .prop('checked', $r.val() === 'Buy');
-  });
-
-  // 移除了重复的事件绑定代码
-
-  $clone.addClass('selection-row');
-  $('#selection-table tbody').append($clone);
-}
-
-    // Commodity -> Destination cascade
+    // Commodity → Destination 级联
     $(document).on('input', '.commodity-input', function(){
       const $row = $(this).closest('tr');
-      const comm = $(this).val();
+      const comm = $(this).val().trim();
       const $dest = $row.find('.destination-select');
-      $dest.html('<option value="">--Select Destination--</option>');
+      const currentDest = $dest.val();
+
+      $dest.find('option:not(:first)').remove();
       if(!comm) return;
-      fetch('/get_destinations',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({commodity:comm})
-      }).then(r=>r.json()).then(list=>{
-        list.forEach(d=> $dest.append(`<option value="${d}">${d}</option>`));
+
+      fetch('/get_destinations', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({commodity: comm})
+      })
+      .then(r => r.json())
+      .then(destinations => {
+        destinations.forEach(d => {
+          $dest.append(`<option value="${d}">${d}</option>`);
+        });
+        // 恢复之前选中的destination
+        if(currentDest && destinations.includes(currentDest)) {
+          $dest.val(currentDest);
+        }
       });
     });
 
-    // Destination -> Commodity validation
+    // Destination → Commodity 验证
     $(document).on('change', '.destination-select', function(){
       const $row = $(this).closest('tr');
       const dest = $(this).val();
       const $comm = $row.find('.commodity-input');
-      if(!dest) return;
-      fetch('/get_commodities',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({destination:dest})
-      }).then(r=>r.json()).then(list=>{
-        if(!list.includes($comm.val())) $comm.val('');
+      const currentComm = $comm.val().trim();
+
+      if(!dest || !currentComm) return;
+
+      fetch('/get_commodities', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({destination: dest})
+      })
+      .then(r => r.json())
+      .then(validCommodities => {
+        if(!validCommodities.includes(currentComm)) {
+          alert("Invalid Commodity-Destination pairing.");
+          $comm.val('');
+        }
       });
     });
 
@@ -152,14 +247,20 @@ function cloneRow(idx){
         const comm = $tr.find('.commodity-input').val();
         const dest = $tr.find('.destination-select').val();
         const dir = $tr.find(`input[name="direction_${i}"]:checked`).val();
-        fetch('/get_curve_root',{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({commodity:comm,destination:dest})
-        }).then(r=>r.json()).then(data=>{
-          $('#results-container').append(
-            `<p>Row ${i+1}: ${comm}-${dest} → ${data.curve_root} (${dir})</p>`
-          );
-        });
+
+        if(comm && dest) {
+          fetch('/get_curve_root', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({commodity:comm,destination:dest})
+          })
+          .then(r=>r.json())
+          .then(data=>{
+            $('#results-container').append(
+              `<p>Row ${i+1}: ${comm}-${dest} → ${data.curve_root} (${dir})</p>`
+            );
+          });
+        }
       });
     });
   });

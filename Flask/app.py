@@ -1,8 +1,11 @@
 from flask import Flask, render_template, request, jsonify
+import pandas as pd
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
-# 静态商品-国家-curve_root 映射数据（你也可以从 CSV 加载）
+# 静态映射数据
 mapping_data = [
     {"commodity": "Soybean", "destination": "China", "curve_root": "SB_CN"},
     {"commodity": "Soybean", "destination": "Japan", "curve_root": "SB_JP"},
@@ -52,6 +55,11 @@ def get_curve_root():
         if row["commodity"] == commodity and row["destination"] == destination:
             return jsonify({"curve_root": row["curve_root"]})
     return jsonify({"curve_root": "Not Found"})
+
+@app.route("/get_available_months", methods=["GET"])
+def get_available_months():
+    months = pd.date_range("2024-01-01", "2025-12-01", freq="MS").strftime("%Y-%m").tolist()
+    return jsonify(months)
 
 if __name__ == "__main__":
     app.run(debug=True)
