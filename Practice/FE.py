@@ -1,14 +1,51 @@
+import numpy as np
 from dateutil.relativedelta import relativedelta
 import math
 import pandas as pd
 import os
-from datetime import datetime
+from datetime import datetime, date
+
+# 1. 月份代码映射
+MONTH_CODE_MAP = {
+    'Jan': 'F', 'Feb': 'G', 'Mar': 'H', 'Apr': 'J', 'May': 'K', 'Jun': 'M',
+    'Jul': 'N', 'Aug': 'Q', 'Sep': 'U', 'Oct': 'V', 'Nov': 'X', 'Dec': 'Z'
+}
+
+# 2. 交易代码到月份数字的映射
+trading_code_to_month = {
+    'F': 1, 'G': 2, 'H': 3, 'J': 4, 'K': 5, 'M': 6,
+    'N': 7, 'Q': 8, 'U': 9, 'V': 10, 'X': 11, 'Z': 12
+}
+
+# 3. 曲线映射数据
+curve_mapping_data = {
+    'Commodity': ['Crude', 'Crude', 'Gas', 'Gas', 'Coal', 'Coal'],
+    'Destination': ['US', 'EU', 'US', 'EU', 'China', 'India'],
+    'Curve_Root': ['CL', 'BRENT', 'HH', 'TTF', 'QINHUANGDAO', 'INDIAN_COAL']
+}
+risk_curve_mapping = pd.DataFrame(curve_mapping_data)
+
+# 4. 波动率数据 (viya_vol)
+# 创建日期范围
+dates = pd.date_range(start='2023-01-01', end='2023-12-31', freq='ME')  # 修正为 'ME'
+# 创建风险因子
+risk_factors = []
+for curve in risk_curve_mapping['Curve_Root'].unique():
+    for year in [24, 25, 26]:
+        for month_code in ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z']:
+            risk_factors.append(f"{curve}_{month_code}{year}")
+
+# 随机生成波动率数据
+np.random.seed(42)
+vol_data = {
+    'RISK_FACTOR': np.random.choice(risk_factors, size=100),
+    'AS_OF_DATE': np.random.choice(dates, size=100),
+    'VOLATILITY': np.random.uniform(0.1, 0.5, size=100)
+}
+viya_vol = pd.DataFrame(vol_data)
 
 
-# 假设以下全局变量已在其他位置定义
-# MONTH_CODE_MAP, curve_mapping, viya_vol, trading_code_to_month
-
-def convert_deliver_month_to_date(month_str: str) -> datetime.date:
+def convert_deliver_month_to_date(month_str: str) -> date:
     """
     将交割月字符串（如"Jan-25"）转换为日期对象（该月的最后一天）
     """
@@ -24,11 +61,12 @@ def convert_deliver_month_to_date(month_str: str) -> datetime.date:
         return None
 
 
-def calculate_time_to_expiry(as_of_date: datetime.date, delivery_date: datetime.date) -> float:
+def calculate_time_to_expiry(as_of_date: date, delivery_date: date) -> float:
     """
     计算到期时间（年化）
     """
-    if not isinstance(as_of_date, datetime.date) or not isinstance(delivery_date, datetime.date):
+    # 修复类型检查
+    if not isinstance(as_of_date, date) or not isinstance(delivery_date, date):
         return 0.0
 
     # 确保交割日期在评估日期之后
@@ -38,6 +76,82 @@ def calculate_time_to_expiry(as_of_date: datetime.date, delivery_date: datetime.
     # 计算天数差并年化
     days_diff = (delivery_date - as_of_date).days
     return days_diff / 365.0
+
+
+def pfe_calculator(direction: str, price: float, vol: float, time_to_exp: float) -> float:
+    """
+    计算PFE值
+
+    Args:
+        direction: 交易方向 (Buy/Sell)
+        price: 合约价格
+        vol: 波动率
+        time_to_exp: 到期时间 (年化)
+
+    Returns:
+        计算后的PFE值
+    """
+    if vol <= 0 or time_to_exp <= 0:
+        return 0.0
+
+    # 95%置信水平的乘数 (1.645)
+    multiplier = 1.645
+    base_pfe = price * vol * math.sqrt(time_to_exp) * multiplier
+
+    # 根据方向确定符号
+    if direction == "Buy":
+        return base_pfe
+    elif direction == "Sell":
+        return -base_pfe
+    else:
+        return 0.0
+
+
+def get_vol(risk_curve: str, deliver_month: str, as_of_date: date):
+    """
+    获取风险曲线的波动率
+
+    Args:
+        risk_curve: 风险曲线
+        deliver_month: 交割月 (格式: MMM-YY)
+        as_of_date: 评估日期
+
+    Returns:
+        (风险因子, 波动率)
+    """
+    try:
+        # 转换交割月为日期
+        delivery_date = convert_deliver_month_to_date(deliver_month)
+        if not delivery_date:
+            return None, None
+
+        # 获取月份代码和两位年份
+        month_str = delivery_date.strftime('%b')
+        month_code = MONTH_CODE_MAP.get(month_str)
+        year_short = delivery_date.strftime('%y')
+
+        # 构建风险因子
+        risk_factor = f"{risk_curve}_{month_code}{year_short}"
+
+        # 转换为Timestamp用于比较
+        as_of_timestamp = pd.Timestamp(as_of_date)
+
+        # 筛选匹配的风险因子和日期
+        filtered = viya_vol[
+            (viya_vol['RISK_FACTOR'] == risk_factor) &
+            (viya_vol['AS_OF_DATE'] <= as_of_timestamp)
+            ]
+
+        if filtered.empty:
+            return None, None
+
+        # 获取最近的波动率
+        latest_vol = filtered.sort_values('AS_OF_DATE', ascending=False).iloc[0]
+        return risk_factor, latest_vol['VOLATILITY']
+
+    except Exception as e:
+        print(f"获取波动率错误: {risk_curve}, {deliver_month} - {e}")
+        return None, None
 
 
 def create_pfe_template(file_path: str = "PFE_template.xlsx") -> None:
@@ -108,6 +222,10 @@ def calculate_and_update_pfe(file_path: str = "PFE_template.xlsx") -> pd.DataFra
     # 读取Excel数据
     try:
         df = pd.read_excel(file_path, sheet_name="PFE")
+
+        # 确保日期列是日期类型
+        df['as_of_date'] = pd.to_datetime(df['as_of_date']).dt.date
+
     except FileNotFoundError:
         print(f"错误: 文件不存在 {file_path}")
         print("请先创建模板: create_pfe_template()")
@@ -131,10 +249,15 @@ def calculate_and_update_pfe(file_path: str = "PFE_template.xlsx") -> pd.DataFra
         axis=1
     )
 
-    # 2. 计算Risk_Curve
+    # 2. 计算Risk_Curve - 修复DataFrame调用错误
     def get_risk_curve(row):
-        curves = risk_curve_mapping(row["commodity"], row["destination"])
-        return curves[0] if curves else ""
+        # 筛选匹配的商品和目的地
+        mask = (risk_curve_mapping['Commodity'] == row['commodity']) & \
+               (risk_curve_mapping['Destination'] == row['destination'])
+        filtered = risk_curve_mapping.loc[mask, 'Curve_Root']
+
+        # 返回第一个匹配的曲线，如果没有则返回空字符串
+        return filtered.values[0] if not filtered.empty else ""
 
     df["Risk_Curve"] = df.apply(get_risk_curve, axis=1)
 
@@ -149,7 +272,7 @@ def calculate_and_update_pfe(file_path: str = "PFE_template.xlsx") -> pd.DataFra
             if pd.isnull(row["contract_vol"]) and row["Risk_Curve"]:
                 try:
                     # 使用风险曲线获取波动率
-                    _, vol = get_vol(row["Risk_Curve"])
+                    _, vol = get_vol(row["Risk_Curve"], row["deliver_month"], row["as_of_date"])
                     return vol
                 except Exception as e:
                     print(f"获取波动率错误 (行{row.name}): {e}")
