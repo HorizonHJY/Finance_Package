@@ -22,8 +22,6 @@
 <body>
   <div class="container mt-5">
     <h2>Select Commodity, Destination & Deliver Date</h2>
-
-    <!-- datalist for search -->
     <datalist id="commodities-list">
       {% for c in commodities %}
         <option value="{{ c }}">
@@ -46,8 +44,8 @@
             <td>
               <div class="input-group">
                 <input type="text" name="commodity[]" list="commodities-list"
-                      class="form-control commodity-input"
-                      placeholder="--Select Commodity--">
+                       class="form-control commodity-input"
+                       placeholder="--Select Commodity--">
                 <div class="input-group-append">
                   <button class="clear-btn" type="button">×</button>
                 </div>

@@ -5,10 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2a528062-c759-4e0b-a22c-1b5533d9f359" name="更改" comment="稍微能用一点了&#10;还有很多地方要加">
-      <change beforePath="$PROJECT_DIR$/.idea/Finance_Package.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Finance_Package.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Flask/Templates/PFE_front.html" beforeDir="false" afterPath="$PROJECT_DIR$/Flask/Templates/PFE_front.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Flask/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/Flask/app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Flask/Templates/base.html" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
