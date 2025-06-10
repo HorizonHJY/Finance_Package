@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Curve Root Selector</title>
+  <title>Risk Exposure Calculator</title>
   <link rel="stylesheet"
         href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
   <style>
@@ -17,11 +17,13 @@
     }
     .clear-btn:hover { background: #f8f9fa; }
     .input-group-append { margin-left: -1px; }
+    .result-item { margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+    .exposure-value { font-weight: bold; }
   </style>
 </head>
 <body>
   <div class="container mt-5">
-    <h2>Select Commodity, Destination & Deliver Date</h2>
+    <h2>Commodity Risk Exposure Calculator</h2>
     <datalist id="commodities-list">
       {% for c in commodities %}
         <option value="{{ c }}">
@@ -36,6 +38,8 @@
             <th>Destination</th>
             <th>Direction</th>
             <th>Deliver Date</th>
+            <th>Position</th>
+            <th>Price</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -68,6 +72,14 @@
               </select>
             </td>
             <td>
+              <input type="number" name="position[]" class="form-control position-input"
+                     placeholder="Contract position" step="0.01" required />
+            </td>
+            <td>
+              <input type="number" name="price[]" class="form-control price-input"
+                     placeholder="Contract Price" step="0.01" required />
+            </td>
+            <td>
               <button type="button" class="btn btn-secondary btn-sm duplicate-row">Duplicate</button>
               <button type="button" class="btn btn-danger btn-sm delete-row">Delete</button>
             </td>
@@ -76,7 +88,8 @@
       </table>
 
       <button type="button" id="add-row-btn" class="btn btn-primary">Add Row</button>
-      <button type="button" id="fetch-btn"    class="btn btn-success">Get Curve Roots</button>
+      <button type="button" id="calculate-btn" class="btn btn-success">Calculate Exposure</button>
+      <button type="button" id="export-csv-btn" class="btn btn-info" disabled>Export CSV</button>
     </form>
 
     <div class="mt-3">
@@ -88,6 +101,9 @@
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script>
   $(function(){
+    // 全局变量，用于存储结果
+    let resultsArray = [];
+
     function loadAvailableMonths() {
       fetch('/get_available_months')
         .then(r => r.json())
@@ -119,6 +135,8 @@
       $clone.find('.commodity-input').val('');
       $clone.find('.destination-select').html('<option value="">--Select Destination--</option>');
       $clone.find('.deliver-month-select').val('');
+      $clone.find('.position-input').val('');
+      $clone.find('.price-input').val('');
 
       // 更新radio按钮
       $clone.find('input[type="radio"]').each(function(){
@@ -145,6 +163,8 @@
       const originalComm = $source.find('.commodity-input').val();
       const originalDest = $source.find('.destination-select').val();
       const originalDate = $source.find('.deliver-month-select').val();
+      const originalPosition = $source.find('.position-input').val();
+      const originalPrice = $source.find('.price-input').val();
       const originalDirection = $source.find('input[type="radio"]:checked').val();
 
       // 克隆行
@@ -177,6 +197,9 @@
 
       // 设置deliver date的值
       $clone.find('.deliver-month-select').val(originalDate);
+      // 设置position和price
+      $clone.find('.position-input').val(originalPosition);
+      $clone.find('.price-input').val(originalPrice);
 
       loadAvailableMonths();
     });
@@ -237,30 +260,129 @@
       });
     });
 
-    // Fetch Curve Roots
-    $('#fetch-btn').on('click', function(){
+    // 计算风险敞口
+    $('#calculate-btn').on('click', function(){
+      resultsArray = []; // 清空之前的结果
       $('#results-container').empty();
-      $('#selection-table tbody tr.selection-row').each(function(i,tr){
+      let promises = [];
+
+      $('#selection-table tbody tr.selection-row').each(function(i, tr){
         const $tr = $(tr);
         const comm = $tr.find('.commodity-input').val();
         const dest = $tr.find('.destination-select').val();
         const dir = $tr.find(`input[name="direction_${i}"]:checked`).val();
+        const date = $tr.find('.deliver-month-select').val();
+        const position = parseFloat($tr.find('.position-input').val());
+        const price = parseFloat($tr.find('.price-input').val());
 
-        if(comm && dest) {
-          fetch('/get_curve_root', {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({commodity:comm,destination:dest})
-          })
-          .then(r=>r.json())
-          .then(data=>{
-            $('#results-container').append(
-              `<p>Row ${i+1}: ${comm}-${dest} → ${data.curve_root} (${dir})</p>`
-            );
-          });
+        // 检查所有字段是否已填写
+        if(comm && dest && date && !isNaN(position) && !isNaN(price)) {
+          // 计算风险敞口
+          promises.push(
+            fetch('/calculate_pfe', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({
+                commodity: comm,
+                destination: dest,
+                direction: dir,
+                deliver_date: date,
+                position: position,
+                price: price
+              })
+            })
+            .then(r => {
+              if(!r.ok) throw new Error('Calculation failed');
+              return r.json();
+            })
+            .then(data => {
+              // 计算总敞口 (单位敞口 * 头寸)
+              const totalExposure = data.exposure * position;
+
+              // 显示结果
+              const resultHtml = `
+                <div class="result-item">
+                  <h6>Row ${i+1}: ${comm} to ${dest} (${dir})</h6>
+                  <div>Risk Curve: ${data.risk_curve}</div>
+                  <div>Volatility: ${data.vol}</div>
+                  <div>Time to Expiry: ${data.time_to_exp} years</div>
+                  <div>Unit Exposure: ${data.exposure.toFixed(6)}</div>
+                  <div>Total Exposure: <span class="exposure-value">${totalExposure.toFixed(6)}</span></div>
+                </div>
+              `;
+              $('#results-container').append(resultHtml);
+
+              // 存储结果用于导出
+              resultsArray.push({
+                row: i+1,
+                commodity: comm,
+                destination: dest,
+                direction: dir,
+                deliver_date: date,
+                position: position,
+                price: price,
+                risk_curve: data.risk_curve,
+                vol: data.vol,
+                time_to_exp: data.time_to_exp,
+                unit_exposure: data.exposure,
+                total_exposure: totalExposure
+              });
+            })
+            .catch(error => {
+              console.error('Error:', error);
+              alert("Backend error: " + error.message);
+              $('#results-container').append(`
+                <div class="alert alert-danger">
+                  Row ${i+1}: Calculation failed - ${error.message}
+                </div>
+              `);
+            })
+          );
+        } else {
+          $('#results-container').append(`
+            <div class="alert alert-warning">
+              Row ${i+1}: Missing required fields
+            </div>
+          `);
         }
       });
+
+      // 等待所有请求完成
+      Promise.all(promises).then(() => {
+        // 如果有结果，则启用导出按钮
+        if(resultsArray.length > 0) {
+          $('#export-csv-btn').prop('disabled', false);
+        }
+      }).catch(error => {
+        console.error('Some calculations failed', error);
+      });
     });
+
+    // 导出CSV
+    $('#export-csv-btn').on('click', function(){
+      if(!resultsArray.length) {
+        alert("No data to export.");
+        return;
+      }
+      // 创建一个CSV字符串
+      let csvContent = "Row,Commodity,Destination,Direction,Deliver Date,Position,Price,Risk Curve,Volatility,Time to Expiry,Unit Exposure,Total Exposure\n";
+
+      resultsArray.forEach(item => {
+        csvContent += `${item.row},${item.commodity},${item.destination},${item.direction},${item.deliver_date},${item.position},${item.price},${item.risk_curve},${item.vol},${item.time_to_exp},${item.unit_exposure},${item.total_exposure}\n`;
+      });
+
+      // 创建Blob并下载
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'risk_exposure_results.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
   });
   </script>
 </body>
