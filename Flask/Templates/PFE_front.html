@@ -262,10 +262,17 @@
 
     // 计算风险敞口
     $('#calculate-btn').on('click', function(){
-      resultsArray = []; // 清空之前的结果
+      // 重置结果数组和容器
+      resultsArray = [];
       $('#results-container').empty();
-      let promises = [];
 
+      // 添加开始日志
+      console.log("Starting exposure calculation...");
+
+      let promises = [];
+      let validRows = 0;
+
+      // 遍历所有行
       $('#selection-table tbody tr.selection-row').each(function(i, tr){
         const $tr = $(tr);
         const comm = $tr.find('.commodity-input').val();
@@ -277,7 +284,19 @@
 
         // 检查所有字段是否已填写
         if(comm && dest && date && !isNaN(position) && !isNaN(price)) {
-          // 计算风险敞口
+          validRows++;
+
+          // 打印请求数据
+          console.log(`Sending request for row ${i+1}:`, {
+            commodity: comm,
+            destination: dest,
+            direction: dir,
+            deliver_date: date,
+            position: position,
+            price: price
+          });
+
+          // 创建并发送请求
           promises.push(
             fetch('/calculate_pfe', {
               method: 'POST',
@@ -291,11 +310,22 @@
                 price: price
               })
             })
-            .then(r => {
-              if(!r.ok) throw new Error('Calculation failed');
-              return r.json();
+            .then(async response => {
+              console.log(`Row ${i+1}: Response status ${response.status}`);
+
+              if(!response.ok) {
+                // 尝试获取错误详情
+                const errorText = await response.text();
+                console.error(`Row ${i+1} backend error:`, errorText);
+
+                throw new Error(`Calculation failed: Server responded with ${response.status} - ${errorText}`);
+              }
+
+              return response.json();
             })
             .then(data => {
+              console.log(`Row ${i+1} calculation success:`, data);
+
               // 计算总敞口 (单位敞口 * 头寸)
               const totalExposure = data.exposure * position;
 
@@ -329,35 +359,67 @@
               });
             })
             .catch(error => {
-              console.error('Error:', error);
-              alert("Backend error: " + error.message);
+              console.error(`Row ${i+1} full error trace:`, error);
+
+              // 显示用户友好的错误信息
               $('#results-container').append(`
                 <div class="alert alert-danger">
-                  Row ${i+1}: Calculation failed - ${error.message}
+                  <h6>Row ${i+1} Calculation Error</h6>
+                  <div>${error.message}</div>
+                  <div class="small">Check console for more details</div>
                 </div>
               `);
             })
           );
         } else {
+          // 显示缺失字段警告
           $('#results-container').append(`
             <div class="alert alert-warning">
-              Row ${i+1}: Missing required fields
+              Row ${i+1}: Missing required fields. Please fill all inputs.
             </div>
           `);
         }
       });
 
-      // 等待所有请求完成
-      Promise.all(promises).then(() => {
-        // 如果有结果，则启用导出按钮
-        if(resultsArray.length > 0) {
-          $('#export-csv-btn').prop('disabled', false);
-        }
-      }).catch(error => {
-        console.error('Some calculations failed', error);
-      });
-    });
+      // 如果没有有效的行
+      if(validRows === 0) {
+        $('#results-container').append(`
+          <div class="alert alert-info">
+            No valid rows found. Please fill in all required fields.
+          </div>
+        `);
+        console.warn("Calculation skipped: No valid rows found");
+        return;
+      }
 
+      // 等待所有请求完成
+      Promise.allSettled(promises)
+        .then(results => {
+          console.log("All requests completed:", results);
+
+          // 统计成功和失败的请求
+          const successCount = results.filter(r => r.status === 'fulfilled').length;
+          const errorCount = results.filter(r => r.status === 'rejected').length;
+
+          // 显示摘要
+          $('#results-container').prepend(`
+            <div class="alert alert-${errorCount > 0 ? 'warning' : 'success'}">
+              Calculations completed: ${successCount} succeeded, ${errorCount} failed
+            </div>
+          `);
+
+          // 如果有结果，则启用导出按钮
+          if(resultsArray.length > 0) {
+            $('#export-csv-btn').prop('disabled', false);
+            console.log(`Results available for export (${resultsArray.length} items)`);
+          } else {
+            console.log("No results available for export");
+          }
+        })
+        .catch(error => {
+          console.error("Unexpected error in Promise.allSettled:", error);
+        });
+    });
     // 导出CSV
     $('#export-csv-btn').on('click', function(){
       if(!resultsArray.length) {
