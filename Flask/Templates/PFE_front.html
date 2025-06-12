@@ -100,30 +100,83 @@
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script>
-  $(function(){
+    $(function(){
     // 全局变量，用于存储结果
     let resultsArray = [];
 
-    function loadAvailableMonths() {
-      fetch('/get_available_months')
-        .then(r => r.json())
-        .then(months => {
-          $('.deliver-month-select').each(function(){
-            const $sel = $(this);
-            const currentVal = $sel.val();
-            $sel.html('<option value="">--Select Month--</option>');
-            months.forEach(m => {
-              $sel.append(`<option value="${m}">${m}</option>`);
-            });
-            if(currentVal) {
-              $sel.val(currentVal);
-            }
+    // 删除原有的 loadAvailableMonths 函数
+
+    // 动态加载可用月份的函数
+    function loadAvailableMonthsForRow($row) {
+      const comm = $row.find('.commodity-input').val();
+      const dest = $row.find('.destination-select').val();
+
+      if(!comm || !dest) {
+        $row.find('.deliver-month-select').html('<option value="">--Select Month--</option>');
+        return;
+      }
+
+      fetch('/get_available_months', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({commodity: comm, destination: dest})
+      })
+      .then(r => r.json())
+      .then(months => {
+        const $sel = $row.find('.deliver-month-select');
+        const currentVal = $sel.val();
+        $sel.html('<option value="">--Select Month--</option>');
+
+        if(months.length === 0) {
+          $sel.append('<option value="" disabled>No months available</option>');
+        } else {
+          months.forEach(m => {
+            $sel.append(`<option value="${m}">${m}</option>`);
           });
-        });
+        }
+
+        if(currentVal) {
+          $sel.val(currentVal);
+        }
+      });
     }
 
-    // 页面加载时填充下拉月份
-    loadAvailableMonths();
+    // Commodity → Destination 级联
+    $(document).on('input', '.commodity-input', function(){
+      const $row = $(this).closest('tr');
+      const comm = $(this).val().trim();
+      const $dest = $row.find('.destination-select');
+      const currentDest = $dest.val();
+
+      $dest.find('option:not(:first)').remove();
+      $row.find('.deliver-month-select').html('<option value="">--Select Month--</option>');
+
+      if(!comm) return;
+
+      fetch('/get_destinations', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({commodity: comm})
+      })
+      .then(r => r.json())
+      .then(destinations => {
+        destinations.forEach(d => {
+          $dest.append(`<option value="${d}">${d}</option>`);
+        });
+
+        if(currentDest && destinations.includes(currentDest)) {
+          $dest.val(currentDest);
+          // 选择目的地后加载可用月份
+          loadAvailableMonthsForRow($row);
+        }
+      });
+    });
+
+    // Destination 改变时加载月份
+    $(document).on('change', '.destination-select', function(){
+      const $row = $(this).closest('tr');
+      loadAvailableMonthsForRow($row);
+    });
 
     // Add Row - 添加空白行
     $('#add-row-btn').on('click', function(){
@@ -134,9 +187,10 @@
       // 清空所有输入
       $clone.find('.commodity-input').val('');
       $clone.find('.destination-select').html('<option value="">--Select Destination--</option>');
-      $clone.find('.deliver-month-select').val('');
+      $clone.find('.deliver-month-select').html('<option value="">--Select Month--</option>');
       $clone.find('.position-input').val('');
       $clone.find('.price-input').val('');
+
 
       // 更新radio按钮
       $clone.find('input[type="radio"]').each(function(){
@@ -196,7 +250,9 @@
       }
 
       // 设置deliver date的值
-      $clone.find('.deliver-month-select').val(originalDate);
+        setTimeout(() => {
+        loadAvailableMonthsForRow($clone);
+        }, 200);
       // 设置position和price
       $clone.find('.position-input').val(originalPosition);
       $clone.find('.price-input').val(originalPrice);
