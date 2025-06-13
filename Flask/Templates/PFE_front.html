@@ -30,7 +30,7 @@
       {% endfor %}
     </datalist>
 
-    <form id="pfe-form">
+    <form id="pfe-form" action="/redit_pfe_result" method="post">
       <table class="table table-bordered" id="selection-table">
         <thead>
           <tr>
@@ -90,7 +90,9 @@
       <button type="button" id="add-row-btn" class="btn btn-primary">Add Row</button>
       <button type="button" id="calculate-btn" class="btn btn-success">Calculate Exposure</button>
       <button type="button" id="export-csv-btn" class="btn btn-info" disabled>Export CSV</button>
+      <button type="submit" class="btn btn-primary">计算并查看结果</button>
     </form>
+
 
     <div class="mt-3">
       <h5>Results:</h5>
@@ -101,45 +103,44 @@
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script>
     $(function(){
-    // 全局变量，用于存储结果
     let resultsArray = [];
-
-    // 删除原有的 loadAvailableMonths 函数
-
-    // 动态加载可用月份的函数
     function loadAvailableMonthsForRow($row) {
-      const comm = $row.find('.commodity-input').val();
-      const dest = $row.find('.destination-select').val();
+    const $sel = $row.find('.deliver-month-select');
+    $sel.html('<option value="">--Select Month--</option>');
+    const months = generateMonthOptions(5); // 5年
 
-      if(!comm || !dest) {
-        $row.find('.deliver-month-select').html('<option value="">--Select Month--</option>');
-        return;
-      }
-
-      fetch('/get_available_months', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({commodity: comm, destination: dest})
-      })
-      .then(r => r.json())
-      .then(months => {
-        const $sel = $row.find('.deliver-month-select');
-        const currentVal = $sel.val();
-        $sel.html('<option value="">--Select Month--</option>');
-
-        if(months.length === 0) {
-          $sel.append('<option value="" disabled>No months available</option>');
-        } else {
-          months.forEach(m => {
-            $sel.append(`<option value="${m}">${m}</option>`);
-          });
-        }
-
-        if(currentVal) {
-          $sel.val(currentVal);
-        }
+    if (months.length === 0) {
+      $sel.append('<option value="" disabled>No months available</option>');
+    } else {
+      months.forEach(m => {
+        $sel.append(`<option value="${m}">${m}</option>`);
       });
     }
+  }
+
+  /**
+   * 生成从当前月份开始的未来N年的月份列表（格式：YYYY-MM）
+   * @param {number} years - 要生成的年数（默认1年）
+   * @returns {string[]} 月份数组，如 ["2025-06", "2025-07", ...]
+   */
+  function generateMonthOptions(years = 1) {
+    const months = [];
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth(); // 0-11
+
+    for (let year = currentYear; year <= currentYear + years; year++) {
+      const startMonth = (year === currentYear) ? currentMonth : 0;
+      const endMonth = (year === currentYear + years) ? currentMonth : 11;
+
+      for (let month = startMonth; month <= endMonth; month++) {
+        const monthStr = (month + 1).toString().padStart(2, '0'); // 补零
+        months.push(`${year}-${monthStr}`);
+      }
+    }
+
+    return months;
+  }
 
     // Commodity → Destination 级联
     $(document).on('input', '.commodity-input', function(){

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Results DataFrame</title>
+    <link rel="stylesheet"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
+    <style>
+        body { padding: 20px; }
+        .table { margin-top: 20px; }
+        .exposure-high { background-color: #ffdddd; }
+        h2 { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>PFE批量计算结果</h2>
+        {% if table %}
+            {{ table|safe }}
+        {% else %}
+            <p>暂无结果，请提交数据。</p>
+        {% endif %}
+    </div>
+    <div class="container">
+        <h2>Risk Exposure Results</h2>
+        <div class="table-responsive">
+            {{ table|safe }}
+        </div>
+        <button onclick="window.print()" class="btn btn-info mt-3">Print</button>
+        <button onclick="window.close()" class="btn btn-secondary mt-3">Close</button>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+    $(document).ready(function() {
+        // Highlight high exposure values
+        $('td:nth-child(12)').each(function() {
+            const val = parseFloat($(this).text());
+            if(val > 1000) {
+                $(this).addClass('exposure-high');
+            }
+        });
+    });
+    </script>
+</body>
+</html>

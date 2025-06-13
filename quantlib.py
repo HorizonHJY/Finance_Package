@@ -1,6 +1,7 @@
 import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from Flask.Controller.pfe_controller import *
 
 month_code_map = {
     'Jan': 'F', 'Feb': 'G', 'Mar': 'H', 'Apr': 'J', 'May': 'K', 'Jun': 'M',
@@ -29,4 +30,14 @@ def date_transfer(start_date,num_months):
 def replace_space_with_underscore(text):
     return text.replace(' ', '_')
 
+def get_available_months_2():
+    # data = request.get_json()  # POST JSON
+    data = {'commodity': 'test 1', 'destination': 'test2'}
+    print(data)
+    comm = data.get("commodity")
+    dest = data.get("destination")
+    curve_root = risk_curve_mapping(comm,dest)
+    months = get_available_months_backend(viya_vol, curve_root)
+    return jsonify(months)
 
+get_available_months_2()

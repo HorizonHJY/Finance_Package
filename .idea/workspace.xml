@@ -5,10 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2a528062-c759-4e0b-a22c-1b5533d9f359" name="更改" comment="update Structure">
+      <change afterPath="$PROJECT_DIR$/Flask/Templates/credit_pfe_result.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Flask/Controller/pfe_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/Flask/Controller/pfe_controller.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Flask/Templates/PFE_front.html" beforeDir="false" afterPath="$PROJECT_DIR$/Flask/Templates/PFE_front.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Flask/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/Flask/app.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Practice/FE.py" beforeDir="false" afterPath="$PROJECT_DIR$/Practice/FE.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/quantlib.py" beforeDir="false" afterPath="$PROJECT_DIR$/quantlib.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -19,6 +23,7 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="Python Script" />
+        <option value="HTML File" />
       </list>
     </option>
   </component>
@@ -48,11 +53,13 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "DefaultHtmlFileTemplate": "HTML File",
+    "Python.FE.executor": "Run",
     "Python.Modeling.executor": "Run",
     "Python.app.executor": "Run",
-    "Python.common.executor": "Run",
-    "Python.pfe_controller.executor": "Run",
+    "Python.quantlib.executor": "Debug",
     "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "git-widget-placeholder": "main",
     "ignore.virus.scanning.warn.message": "true",
@@ -143,5 +150,21 @@
     <MESSAGE value="稍微能用一点了&#10;还有很多地方要加" />
     <MESSAGE value="update Structure" />
     <option name="LAST_COMMIT_MESSAGE" value="update Structure" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/quantlib.py</url>
+          <line>40</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/quantlib.py</url>
+          <line>38</line>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>

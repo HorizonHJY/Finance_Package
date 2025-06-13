@@ -112,7 +112,7 @@ def risk_curve_mapping(commodity: str, destination: str) -> str:
     sub_set = curve_mapping.loc[(curve_mapping['commodity'] == commodity) &
                                 (curve_mapping['destination'] == destination),'curve_root'
     ]
-    return sub_set.values
+    return sub_set.values[0]
 
 
 def commodity_mapping(destination: str) -> list:
@@ -120,4 +120,4 @@ def commodity_mapping(destination: str) -> list:
     return list(commodity_list)
 
 
-print(risk_curve_mapping('corn', 'Portugal'))
+# print(risk_curve_mapping('corn', 'Portugal'))
