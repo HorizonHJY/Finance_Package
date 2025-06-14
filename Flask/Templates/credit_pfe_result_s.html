@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PFE Batch Results</title>
+  <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
+  <style>
+    body { padding: 20px; }
+    table { width: 100%; }
+    th, td { padding: 8px 12px; }
+    .highlight { background-color: #ffe6e6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>PFE Batch Calculation Results</h2>
+    {% if rows %}
+    <table class="table table-bordered table-striped">
+      <thead>
+        <tr>
+          {% if 'commodity'      in columns_dict %}<th>Product</th>{% endif %}
+          {% if 'destination'    in columns_dict %}<th>Origin</th>{% endif %}
+          {% if 'direction'      in columns_dict %}<th>Direction</th>{% endif %}
+          {% if 'deliver_date'   in columns_dict %}<th>Deliver Date</th>{% endif %}
+          {% if 'risk_curve'     in columns_dict %}<th>Risk Curve</th>{% endif %}
+          {% if 'vol'            in columns_dict %}<th>Ann Volatility</th>{% endif %}
+          {% if 'time_to_exp'    in columns_dict %}<th>Time to Expiry</th>{% endif %}
+          {% if 'exposure'       in columns_dict %}<th>P95 Price Change(USD/MT)</th>{% endif %}
+          {% if 'total_exposure' in columns_dict %}<th>PFE(k$)</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          {% if 'commodity'      in columns_dict %}<td>{{ row['commodity'] }}</td>{% endif %}
+          {% if 'destination'    in columns_dict %}<td>{{ row['destination'] }}</td>{% endif %}
+          {% if 'direction'      in columns_dict %}<td>{{ row['direction'] }}</td>{% endif %}
+          {% if 'deliver_date'   in columns_dict %}<td>{{ row['deliver_date'] }}</td>{% endif %}
+          {% if 'risk_curve'     in columns_dict %}<td>{{ row['risk_curve'] }}</td>{% endif %}
+          {% if 'vol'            in columns_dict %}<td>{{ row['vol'] }}</td>{% endif %}
+          {% if 'time_to_exp'    in columns_dict %}<td>{{ row['time_to_exp'] }}</td>{% endif %}
+          {% if 'exposure'       in columns_dict %}<td>{{ row['exposure'] }}</td>{% endif %}
+          {% if 'total_exposure' in columns_dict %}<td>{{ row['total_exposure'] }}</td>{% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+      <button id="exportBtn" class="btn btn-success mb-3">
+        Export CSV
+      </button>
+    {% else %}
+      <p>No data available. Please submit the form first.</p>
+    {% endif %}
+  </div>
+  <script>
+    // 将后端传来的 rows 和 columns_dict 注入到 JS
+    const rows        = {{ rows|tojson }};
+    const columns     = {{ columns_dict|tojson }};
+
+    document.getElementById('exportBtn').addEventListener('click', function() {
+      if (!rows.length) {
+        alert("No data to export.");
+        return;
+      }
+      // 构造 CSV
+      let csv = columns.join(',') + '\n';
+      rows.forEach(r => {
+        csv += columns.map(col => r[col]).join(',') + '\n';
+      });
+      // 触发下载
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = 'pfe_results.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</body>
+</html>

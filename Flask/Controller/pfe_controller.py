@@ -208,6 +208,19 @@ def credit_pfe_result():
             input_list.append(item)
 
         df = calc_pfe_core(input_list)
-        return render_template("credit_pfe_result.html", table=df.to_html(classes='table table-striped'))
+        print(f"{df} -> df")
+        # return render_template("credit_pfe_result.html", table=df.to_html(classes='table table-striped'))
+        # —— 这是修改后的返回 ——
+        # return render_template(
+        #     "credit_pfe_result.html",
+        #     columns=df.columns.tolist(),
+        #     data=df.to_dict(orient="records")
+        # )
+        return render_template(
+            "credit_pfe_result_s.html",
+            rows=df.to_dict(orient="records"),
+            columns_dict=df.columns.tolist()
+        )
     else:
+        # GET 时只渲染模板，前端 JS 会再去抓 POST 返回的 JSON
         return render_template("credit_pfe_result.html", table=None)

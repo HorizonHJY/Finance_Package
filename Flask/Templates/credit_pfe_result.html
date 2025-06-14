@@ -1,45 +1,140 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Results DataFrame</title>
-    <link rel="stylesheet"
-          href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
-    <style>
-        body { padding: 20px; }
-        .table { margin-top: 20px; }
-        .exposure-high { background-color: #ffdddd; }
-        h2 { margin-bottom: 20px; }
-    </style>
+  <meta charset="UTF-8">
+  <title>PFE Batch Calculation Results</title>
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
+  <!-- DataTables CSS -->
+  <link rel="stylesheet"
+        href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+  <!-- FontAwesome (optional) -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <style>
+    body {
+      background-color: #f0f2f5;
+      padding-top: 56px;
+    }
+    .card {
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .card-header {
+      background-color: #fff;
+      border-bottom: 2px solid #e9ecef;
+    }
+    .card-header h4 {
+      margin: 0;
+      color: #343a40;
+    }
+    .card-body {
+      padding: 2rem;
+    }
+    /* Larger font and row height */
+    #resultTable {
+      font-size: 1rem;
+    }
+    #resultTable th,
+    #resultTable td {
+      padding: 0.75rem 1.25rem;
+    }
+    .highlight-high {
+      background-color: #ffe6e6 !important;
+    }
+    #exportBtn {
+      min-width: 140px;
+    }
+  </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <h2>PFE批量计算结果</h2>
-        {% if table %}
-            {{ table|safe }}
-        {% else %}
-            <p>暂无结果，请提交数据。</p>
-        {% endif %}
-    </div>
-    <div class="container">
-        <h2>Risk Exposure Results</h2>
-        <div class="table-responsive">
-            {{ table|safe }}
-        </div>
-        <button onclick="window.print()" class="btn btn-info mt-3">Print</button>
-        <button onclick="window.close()" class="btn btn-secondary mt-3">Close</button>
-    </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+    <a class="navbar-brand" href="#">PFE Calculator</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navMenu" aria-controls="navMenu"
+            aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+  </nav>
+
+  <div class="container-fluid mt-4">
+    <div class="card">
+      <div class="card-header">
+        <h4>PFE Batch Calculation Results</h4>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table id="resultTable"
+                 class="table table-striped table-hover table-bordered"
+                 style="width:100%">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <button id="exportBtn" class="btn btn-success mt-3">
+          <i class="fas fa-file-csv"></i> Export CSV
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- jQuery & Bootstrap JS & DataTables JS -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script
+    src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+
+  <script>
+    // Jinja2-injected data
+    const response = {
+      columns: {{ columns | tojson }},
+      data:    {{ data    | tojson }}
+    };
+
     $(document).ready(function() {
-        // Highlight high exposure values
-        $('td:nth-child(12)').each(function() {
-            const val = parseFloat($(this).text());
-            if(val > 1000) {
-                $(this).addClass('exposure-high');
-            }
+      // Build DataTables column definitions
+      const columnsDef = response.columns.map(key => ({
+        title: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
+        data:  key
+      }));
+
+      // Initialize DataTable
+      $('#resultTable').DataTable({
+        data:    response.data,
+        columns: columnsDef,
+        createdRow: function(row, rowData) {
+          const idx = response.columns.indexOf("total_exposure");
+          if (idx >= 0 && rowData.total_exposure > 1000) {
+            $('td', row).eq(idx).addClass('highlight-high');
+          }
+        }
+      });
+
+      // Export CSV
+      $('#exportBtn').on('click', function() {
+        if (response.data.length === 0) {
+          alert("No data to export.");
+          return;
+        }
+        // Build CSV string
+        let csv = response.columns.join(",") + "\n";
+        response.data.forEach(row => {
+          csv += response.columns.map(col => row[col]).join(",") + "\n";
         });
+        // Trigger download
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = 'exposure_results.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
     });
-    </script>
+  </script>
 </body>
 </html>
