@@ -1,5 +1,5 @@
 from typing import List, Tuple, Optional
-
+from bisect import bisect_right
 import pandas as pd
 from datetime import datetime, date
 
@@ -40,10 +40,10 @@ vol_data = [
     ["2025-03-13", "2025-03-17 14:40:54", "Prncpl_CNSTNZ_SBMPS_CIF_H26", 0.00958367862919055],
     ["2025-03-13", "2025-03-17 14:40:54", "Prncpl_CNSTNZ_SBMPS_CIF_G26", 0.00931276655325378],
     ["2025-03-13", "2025-03-17 14:40:54", "Prncpl_CNSTNZ_SBMPS_CIF_F26", 0.0116875122485111],
-    ["2025-03-13", "2025-03-17 14:40:54", "Prncpl_CNSTNZ_SBMPS_CIF_Z25", 0.012192808719508],
+    ["2025-03-13", "2025-03-17 14:40:54", "Prncpl_CNSTNZ_SBMPS_CIF_Z25", 0.012192808719508], # Dec
     ["2025-03-13", "2025-03-17 14:40:54", "Prncpl_CNSTNZ_SBMPS_CIF_X25", 0.0121066787877991],
-    ["2025-03-13", "2025-03-17 14:40:54", "Prncpl_CNSTNZ_SBMPS_CIF_V25", 0.01252940022954],
-    ["2025-03-13", "2025-03-17 14:40:54", "Prncpl_CNSTNZ_SBMPS_CIF_U25", 0.0124320682614375],
+    # ["2025-03-13", "2025-03-17 14:40:54", "Prncpl_CNSTNZ_SBMPS_CIF_V25", 0.01252940022954], # Oct
+    # ["2025-03-13", "2025-03-17 14:40:54", "Prncpl_CNSTNZ_SBMPS_CIF_U25", 0.0124320682614375], # Sep
     ["2025-03-13", "2025-03-17 14:40:54", "Prncpl_CNSTNZ_SBMPS_CIF_Q25", 0.0128084543445655],
     ["2025-03-13", "2025-03-17 14:40:54", "Prncpl_CNSTNZ_SBMPS_CIF_N25", 0.0144711914706103],
     ["2025-03-13", "2025-03-17 14:40:54", "Prncpl_CNSTNZ_SBMPS_CIF_M25", 0.014418468605279],
@@ -103,12 +103,162 @@ date_list = [
 
 
 
-def get_vol(rsk_fac: str) -> float:
-    result = viya_vol.loc[viya_vol['RISK_FACTOR'] == rsk_fac, 'VOLATILITY']
-    return result.item()
+def convert_deliver_month_to_date(date_str: str) -> Optional[Tuple[datetime, str]]:
+        """
+        解析特殊日期格式(如'Jun-25')，返回datetime对象和标准化字符串
+
+        参数:
+            date_str: 日期字符串，支持格式:
+                - 'Jun-25' (MMM-YY)
+                - '2025-06' (YYYY-MM)
+                - '202506' (YYYYMM)
+
+        返回:
+            (datetime对象, 标准化后的日期字符串) 或 None(解析失败时)
+        """
+        date_str = date_str.strip()
+        try:
+            # 尝试解析 MMM-YY 格式 (如 'Jun-25')
+            if len(date_str) == 6 and '-' in date_str:
+                month_str, year_short = date_str.split('-')
+                dt = datetime.strptime(f"{month_str}-{year_short}", "%b-%y")
+                return dt, dt.strftime("%b-%y")
 
 
-# a = pfe_calculator('Sell', 357.0, 0.234603017797129, 0.085555555555555)
+        except ValueError as e:
+            pass
+
+        print(f"警告: 无法解析日期格式 '{date_str}' - 支持格式: MMM-YY, YYYY-MM, YYYYMM")
+        return None
+
+
+def country_mapping(commodity: str) -> list:
+    country_list = curve_mapping.loc[curve_mapping['commodity'] == commodity, 'destination']
+    return list(country_list)
+
+
+def risk_curve_mapping(commodity: str, destination: str) -> str:
+    sub_set = curve_mapping.loc[(curve_mapping['commodity'] == commodity) &
+                                (curve_mapping['destination'] == destination),'curve_root'
+    ]
+    return sub_set.values[0]
+
+
+def get_date_list(data_source: pd.DataFrame, risk_curve_root: str) -> List[Tuple[datetime, str]]:
+    """
+    从数据源中提取并处理日期信息，返回按日期排序的列表
+
+    参数:
+        data_source: 包含风险因子数据的DataFrame
+        risk_curve_root: 风险曲线根名称(如"Prncpl_CNSTNZ_SBMPS_CIF")
+
+    返回:
+        按日期降序排列的(datetime, risk_factor)元组列表
+    """
+    # 构造匹配模式 - 更严格的匹配风险曲线格式
+    pattern = fr'^{risk_curve_root}_[A-Z][0-9]{{2}}$'
+    factor_set = data_source[data_source['RISK_FACTOR'].str.contains(pattern, regex=True, na=False)]
+
+    if factor_set.empty:
+        print(f"警告: 风险曲线 {risk_curve_root} 不存在或没有有效数据")
+        return []
+
+    date_entries = []
+    seen = set()  # 用于去重
+
+    for _, row in factor_set.iterrows():
+        risk_factor = row['RISK_FACTOR']
+        if risk_factor in seen:
+            continue
+        seen.add(risk_factor)
+
+        # 提取月份代码和年份
+        month_code = risk_factor[-3:-2]  # 如 'Q' in 'Q25'
+        year_short = risk_factor[-2:]  # 如 '25' in 'Q25'
+
+        # 反转月份代码映射 (代码->月份数字)
+        code_to_month = {v: k for k, v in MONTH_CODE_MAP.items()}
+        try:
+            month_str = code_to_month[month_code]
+            month_num = datetime.strptime(month_str, '%b').month
+            year_full = 2000 + int(year_short)
+            date_obj = datetime(year_full, month_num, 1)
+            date_entries.append((date_obj, risk_factor))
+        except (KeyError, ValueError) as e:
+            print(f"警告: 忽略无效的月份代码 {month_code} 在 {risk_factor}")
+            continue
+
+    # 按日期降序排序 (最近的日期在前)
+    date_entries.sort(reverse=True, key=lambda x: x[0])
+    return date_entries
+
+# get_date_list(viya_vol,"Prncpl_CNSTNZ_SBMPS_CIF")
+
+
+def match_curve(risk_curve_root: str, deliver_month: str,
+                data_source: pd.DataFrame = None) -> str | None:
+    """
+    匹配最适合给定交付月份的风险曲线
+
+    参数:
+        risk_curve_root: 风险曲线根名称
+        deliver_month: 交付月份字符串(支持多种格式)
+        data_source: 数据源DataFrame(可选)
+
+    返回:
+        匹配的风险因子字符串，或None(如果没有匹配)
+    """
+    try:
+        # 使用新函数解析日期
+        parsed = convert_deliver_month_to_date(deliver_month)
+        if not parsed:
+            return None
+        delivery_date, _ = parsed
+
+        # 获取日期列表
+        date_list = get_date_list(data_source, risk_curve_root)
+        if not date_list:
+            return None
+
+        # 处理边界情况
+        if delivery_date > date_list[0][0]:  # 大于最大日期
+            return date_list[0][1]
+        if delivery_date < date_list[-1][0]:  # 小于最小日期
+            return date_list[-1][1]
+
+        # 寻找最接近的日期
+        closest = None
+        min_diff = float('inf')
+
+        for date_obj, risk_factor in date_list:
+            diff = abs((delivery_date - date_obj).days)
+
+            if diff < min_diff:
+                min_diff = diff
+                closest = risk_factor
+            elif diff == min_diff:
+                # 如果距离相同，选择较早的日期(前一个)
+                if date_obj < delivery_date:
+                    closest = risk_factor
+
+        return closest
+
+    except Exception as e:
+        print(f"错误: 无法匹配风险曲线 {risk_curve_root} - {str(e)}")
+        return None
+
+result = match_curve('Prncpl_CNSTNZ_SBMPS_CIF','Sep-25',viya_vol)
+print(result)
+
+def get_vol(datasource: pd.DataFrame, risk_curve_root: str, deliver_month: str):
+    risk_curve = match_curve(risk_curve_root, deliver_month)
+    filtered = datasource[(datasource['RISK_FACTOR'] == risk_curve)]
+    if filtered.empty:
+        print('there')
+        return None, None
+
+    # latest_vol = filtered.sort_values('AS_OF_DATE', ascending=False).iloc[0]
+    return risk_curve, filtered['VOLATILITY'].iloc[0] * math.sqrt(252)
 
 
 def pfe_calculator(direction: str, contract_price: float, contract_vol: float, time_to_exp: float) -> float:
@@ -133,213 +283,3 @@ def pfe_calculator(direction: str, contract_price: float, contract_vol: float, t
         result = contract_price * (1 - math.exp(sell_adjust_term))
 
     return result
-
-
-def country_mapping(commodity: str) -> list:
-    country_list = curve_mapping.loc[curve_mapping['commodity'] == commodity, 'destination']
-    return list(country_list)
-
-
-def risk_curve_mapping(commodity: str, destination: str) -> str:
-    sub_set = curve_mapping.loc[(curve_mapping['commodity'] == commodity) &
-                                (curve_mapping['destination'] == destination),'curve_root'
-    ]
-    return sub_set.values[0]
-
-
-def commodity_mapping(destination: str) -> list:
-    commodity_list = curve_mapping.loc[curve_mapping['Destination'] == destination, 'Commodity']
-    return list(commodity_list)
-
-
-def get_date_list(data_source: pd.DataFrame, risk_factor: str) -> List[Tuple[datetime, str]]:
-    pattern = fr'^{risk_factor}:[A-Z][0-9]{{2}}$'  # 更严格的匹配
-    factor_set = data_source[data_source['RISK_FACTOR'].str.contains(pattern, regex=True, na=False)]
-    if factor_set.empty:
-        print(f"警告: 风险因子 {risk_factor} 不存在或没有有效数据")
-        return []
-    # 提取日期信息并去重
-    date_entries = []
-    seen = set()  # 用于去重
-    for _, row in factor_set.iterrows():
-        rf = row['RISK_FACTOR']
-        if rf in seen:
-            continue
-        seen.add(rf)
-        # 解析日期部分 (如 ":M25" 中的 M 和 25)
-        month_code = rf[-3:-2]  # 月份代码字母
-        year_short = int(rf[-2:])
-        try:
-            month_num = trading_code_to_month[month_code]
-            date_obj = datetime(2000 + year_short, month_num, 1)
-            date_entries.append((date_obj, rf))
-        except KeyError:
-            print(f"警告: 忽略无效的月份代码 {month_code} 在 {rf}")
-            continue
-    # 按日期降序排序 (最近的日期在前)
-    date_entries.sort(reverse=True, key=lambda x: x[0])
-    return date_entries
-
-
-def find_best_match(date_list: List[Tuple[datetime, str]],
-                    target_date: datetime,
-                    datasource: pd.DataFrame,
-                    as_of_date: date) -> Optional[str]:
-    # 统一转成 date 类型比较
-    datasource['AS_OF_DATE'] = pd.to_datetime(datasource['AS_OF_DATE']).dt.date
-    if not isinstance(as_of_date, date):
-        as_of_date = pd.to_datetime(as_of_date).date()
-
-    for date_obj, rf in date_list:
-        if date_obj > target_date:
-            continue
-        if not datasource[
-            (datasource['RISK_FACTOR'] == rf) &
-            (datasource['AS_OF_DATE'] <= as_of_date)
-        ].empty:
-            return rf
-
-    for date_obj, rf in reversed(date_list):
-        if not datasource[
-            (datasource['RISK_FACTOR'] == rf) &
-            (datasource['AS_OF_DATE'] <= as_of_date)
-        ].empty:
-            return rf
-    return None
-
-
-def get_vol(datasource: pd.DataFrame, risk_curve: str, deliver_month: str, as_of_date: date) -> tuple:
-    """
-    简化后的主函数，只保留核心流程
-    """
-    try:
-        # 1. 转换目标日期
-        delivery_date = convert_deliver_month_to_date(deliver_month)
-        if not delivery_date:
-            return None, None
-
-        # 2. 获取预处理好的日期列表
-        date_list = get_date_list(datasource, risk_curve)
-        if not date_list:
-            return None, None
-
-        # 3. 查找最佳匹配
-        target_date = datetime(delivery_date.year, delivery_date.month, 1)
-        best_rf = find_best_match(date_list, target_date, datasource, as_of_date)
-
-        if not best_rf:
-            return None, None
-
-        # 4. 获取波动率
-        vol_data = datasource[
-            (datasource['RISK_FACTOR'] == best_rf) &
-            (datasource['AS_OF_DATE'] <= pd.Timestamp(as_of_date))
-            ]
-        return best_rf, vol_data['VOLATILITY'].iloc[0] * math.sqrt(252)
-
-    except Exception as e:
-        print(f"获取波动率失败: {str(e)}")
-        return None, None
-
-    except Exception as e:
-        print(f"获取波动率失败: {str(e)}")
-        return None, None
-
-# print(risk_curve_mapping('corn', 'Portugal'))
-def run_comprehensive_tests():
-    print("===== 精确匹配测试 =====")
-    # 测试1: 精确匹配存在
-    _test_case(
-        "精确匹配存在",
-        target=datetime(2025, 5, 1),
-        expected="CURVE_A:K25",
-        as_of=date(2025, 12, 31)
-    )
-
-    print("\n===== 早于匹配测试 =====")
-    # 测试2: 匹配早于的最接近日期
-    _test_case(
-        "早于匹配(中间值)",
-        target=datetime(2025, 5, 15),
-        expected="CURVE_A:K25",
-        as_of=date(2025, 12, 31)
-    )
-    # 新增测试：刚好在两个月中间
-    _test_case(
-        "早于匹配(等距)",
-        target=datetime(2023, 5, 1),  # 在J23(4月)和K23(5月)中间
-        expected="CURVE_A:K23",  # 等距时选择较早的
-        as_of=date(2023, 12, 31)
-    )
-
-    print("\n===== 晚于匹配测试 =====")
-    # 测试3: 需要匹配晚于的日期
-    _test_case(
-        "晚于匹配(所有都晚)",
-        target=datetime(2022, 1, 1),
-        expected="CURVE_A:J23",  # 最早的可用
-        as_of=date(2023, 12, 31)
-    )
-    # 新增测试：部分晚于
-    _test_case(
-        "晚于匹配(部分晚于)",
-        target=datetime(2024, 1, 15),  # 在J24(6月)和M24(5月)之前
-        expected="CURVE_A:M24",  # 选择最接近的晚于日期
-        as_of=date(2024, 12, 31)
-    )
-
-    print("\n===== 数据有效性测试 =====")
-    # 测试5: 过滤过期的as_of_date
-    _test_case(
-        "全部数据过期",
-        target=datetime(2024, 6, 1),
-        expected=None,
-        as_of=date(2023, 6, 30)
-    )
-    # 新增测试：部分数据有效
-    _test_case(
-        "部分数据有效",
-        target=datetime(2024, 6, 1),
-        expected="CURVE_A:J24",  # 虽然有两个M24但只有2024-01-01的可用
-        as_of=date(2024, 6, 30)
-    )
-
-    print("\n===== 边界条件测试 =====")
-    # 测试空输入
-    _test_case(
-        "空日期列表",
-        target=datetime(2023, 1, 1),
-        expected=None,
-        as_of=date(2023, 12, 31),
-        custom_date_list=[]
-    )
-    # 测试无效曲线
-    _test_case(
-        "无效曲线类型",
-        target=datetime(2023, 1, 1),
-        expected=None,
-        as_of=date(2023, 12, 31),
-        custom_date_list=[(datetime(2023, 1, 1), "INVALID_CURVE:X99")]
-    )
-
-
-def _test_case(name, target, expected, as_of, custom_date_list=None):
-    """执行单个测试用例并打印结果"""
-    actual = find_best_match(
-        custom_date_list if custom_date_list else date_list,
-        target,
-        df,
-        as_of
-    )
-    result = "✓" if actual == expected else "✗"
-    print(f"{result} {name}:")
-    print(f"  目标: {target.strftime('%Y-%m')}")
-    print(f"  预期: {expected}")
-    print(f"  实际: {actual}")
-    if actual != expected:
-        print("  !!! 测试失败 !!!")
-
-
-# 执行增强版测试
-run_comprehensive_tests()
-
