@@ -101,9 +101,19 @@ date_list = [
     (datetime(2023,5,1), "CURVE_A:K23"),
     (datetime(2023,4,1), "CURVE_A:J23"),]
 
+def convert_deliver_month_to_date_ori(month_str: str) -> date:
+    try:
+        date_obj = datetime.strptime(month_str, '%b-%y').date()
+        next_month = date_obj.replace(day=1) + relativedelta(months=1)
+        last_day = next_month - relativedelta(days=1)
+        return last_day
+
+    except Exception as e:
+        print(f"month coding error: {month_str} - {e}")
+        return None
 
 
-def convert_deliver_month_to_date(date_str: str) -> Optional[Tuple[datetime, str]]:
+def convert_deliver_month_to_date(date_str: str) -> date:
         """
         解析特殊日期格式(如'Jun-25')，返回datetime对象和标准化字符串
 
@@ -122,7 +132,7 @@ def convert_deliver_month_to_date(date_str: str) -> Optional[Tuple[datetime, str
             if len(date_str) == 6 and '-' in date_str:
                 month_str, year_short = date_str.split('-')
                 dt = datetime.strptime(f"{month_str}-{year_short}", "%b-%y")
-                return dt, dt.strftime("%b-%y")
+                return dt.date()
 
 
         except ValueError as e:
@@ -131,6 +141,9 @@ def convert_deliver_month_to_date(date_str: str) -> Optional[Tuple[datetime, str
         print(f"警告: 无法解析日期格式 '{date_str}' - 支持格式: MMM-YY, YYYY-MM, YYYYMM")
         return None
 
+# test_r_1 = convert_deliver_month_to_date_ori('Sep-25')
+# test_r = convert_deliver_month_to_date('Sep-25')
+# print(test_r)
 
 def country_mapping(commodity: str) -> list:
     country_list = curve_mapping.loc[curve_mapping['commodity'] == commodity, 'destination']
@@ -144,18 +157,7 @@ def risk_curve_mapping(commodity: str, destination: str) -> str:
     return sub_set.values[0]
 
 
-def get_date_list(data_source: pd.DataFrame, risk_curve_root: str) -> List[Tuple[datetime, str]]:
-    """
-    从数据源中提取并处理日期信息，返回按日期排序的列表
-
-    参数:
-        data_source: 包含风险因子数据的DataFrame
-        risk_curve_root: 风险曲线根名称(如"Prncpl_CNSTNZ_SBMPS_CIF")
-
-    返回:
-        按日期降序排列的(datetime, risk_factor)元组列表
-    """
-    # 构造匹配模式 - 更严格的匹配风险曲线格式
+def get_date_list(data_source, risk_curve_root) -> list:
     pattern = fr'^{risk_curve_root}_[A-Z][0-9]{{2}}$'
     factor_set = data_source[data_source['RISK_FACTOR'].str.contains(pattern, regex=True, na=False)]
 
@@ -163,8 +165,10 @@ def get_date_list(data_source: pd.DataFrame, risk_curve_root: str) -> List[Tuple
         print(f"警告: 风险曲线 {risk_curve_root} 不存在或没有有效数据")
         return []
 
-    date_entries = []
-    seen = set()  # 用于去重
+    date_list = []
+    seen = set()
+
+    code_to_month = {v: k for k, v in MONTH_CODE_MAP.items()}
 
     for _, row in factor_set.iterrows():
         risk_factor = row['RISK_FACTOR']
@@ -172,83 +176,53 @@ def get_date_list(data_source: pd.DataFrame, risk_curve_root: str) -> List[Tuple
             continue
         seen.add(risk_factor)
 
-        # 提取月份代码和年份
-        month_code = risk_factor[-3:-2]  # 如 'Q' in 'Q25'
-        year_short = risk_factor[-2:]  # 如 '25' in 'Q25'
-
-        # 反转月份代码映射 (代码->月份数字)
-        code_to_month = {v: k for k, v in MONTH_CODE_MAP.items()}
+        month_code = risk_factor[-3:-2]
+        year_short = risk_factor[-2:]
         try:
             month_str = code_to_month[month_code]
-            month_num = datetime.strptime(month_str, '%b').month
+            month_num = datetime.strptime(month_str, "%b").month
             year_full = 2000 + int(year_short)
             date_obj = datetime(year_full, month_num, 1)
-            date_entries.append((date_obj, risk_factor))
-        except (KeyError, ValueError) as e:
-            print(f"警告: 忽略无效的月份代码 {month_code} 在 {risk_factor}")
+            date_list.append(date_obj.date())
+        except Exception as e:
+            print(f"跳过非法风险因子: {risk_factor} 原因: {e}")
             continue
 
-    # 按日期降序排序 (最近的日期在前)
-    date_entries.sort(reverse=True, key=lambda x: x[0])
-    return date_entries
-
-# get_date_list(viya_vol,"Prncpl_CNSTNZ_SBMPS_CIF")
+    date_list.sort(reverse=True)
+    return date_list
 
 
-def match_curve(risk_curve_root: str, deliver_month: str,
-                data_source: pd.DataFrame = None) -> str | None:
-    """
-    匹配最适合给定交付月份的风险曲线
+# get_date_result = get_date_list(viya_vol,"Prncpl_CNSTNZ_SBMPS_CIF")
+# print(get_date_result)
 
-    参数:
-        risk_curve_root: 风险曲线根名称
-        deliver_month: 交付月份字符串(支持多种格式)
-        data_source: 数据源DataFrame(可选)
+def match_curve(risk_curve_root, deliver_month, data_source):
+    parsed = convert_deliver_month_to_date(deliver_month)
+    if not parsed:
+        return None
+    delivery_date = parsed
 
-    返回:
-        匹配的风险因子字符串，或None(如果没有匹配)
-    """
-    try:
-        # 使用新函数解析日期
-        parsed = convert_deliver_month_to_date(deliver_month)
-        if not parsed:
-            return None
-        delivery_date, _ = parsed
-
-        # 获取日期列表
-        date_list = get_date_list(data_source, risk_curve_root)
-        if not date_list:
-            return None
-
-        # 处理边界情况
-        if delivery_date > date_list[0][0]:  # 大于最大日期
-            return date_list[0][1]
-        if delivery_date < date_list[-1][0]:  # 小于最小日期
-            return date_list[-1][1]
-
-        # 寻找最接近的日期
-        closest = None
-        min_diff = float('inf')
-
-        for date_obj, risk_factor in date_list:
-            diff = abs((delivery_date - date_obj).days)
-
-            if diff < min_diff:
-                min_diff = diff
-                closest = risk_factor
-            elif diff == min_diff:
-                # 如果距离相同，选择较早的日期(前一个)
-                if date_obj < delivery_date:
-                    closest = risk_factor
-
-        return closest
-
-    except Exception as e:
-        print(f"错误: 无法匹配风险曲线 {risk_curve_root} - {str(e)}")
+    date_list = get_date_list(data_source, risk_curve_root)
+    if not date_list:
         return None
 
-result = match_curve('Prncpl_CNSTNZ_SBMPS_CIF','Sep-25',viya_vol)
-print(result)
+    # 处理边界
+    if delivery_date > date_list[0]:
+        match_date = date_list[0]
+    elif delivery_date < date_list[-1]:
+        match_date = date_list[-1]
+    else:
+        match_date = min(date_list, key=lambda d: abs((delivery_date - d).days))
+
+    # 构造 risk_factor
+    month_code_map = {v: k for k, v in trading_code_to_month.items()}
+    month_code = month_code_map[match_date.month]
+    year_short = str(match_date.year)[-2:]
+    risk_factor = f"{risk_curve_root}_{month_code}{year_short}"
+
+    return risk_factor
+
+result = match_curve('Prncpl_CNSTNZ_SBMPS_CIF','Sep-21',viya_vol)
+print(f"result is {result}")
 
 def get_vol(datasource: pd.DataFrame, risk_curve_root: str, deliver_month: str):
     risk_curve = match_curve(risk_curve_root, deliver_month)
@@ -283,3 +257,5 @@ def pfe_calculator(direction: str, contract_price: float, contract_vol: float, t
         result = contract_price * (1 - math.exp(sell_adjust_term))
 
     return result
+
+
