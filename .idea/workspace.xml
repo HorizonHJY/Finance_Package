@@ -4,8 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a528062-c759-4e0b-a22c-1b5533d9f359" name="更改" comment="add export function">
-      <change afterPath="$PROJECT_DIR$/Flask/Templates/B_PFE_Front.html" afterDir="false" />
+    <list default="true" id="2a528062-c759-4e0b-a22c-1b5533d9f359" name="更改" comment="dev for loading external files">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -182,7 +181,15 @@
       <option name="project" value="LOCAL" />
       <updated>1750035386042</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="dev for loading external files">
+      <option name="closed" value="true" />
+      <created>1750040766568</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1750040766568</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -205,7 +212,8 @@
     <MESSAGE value="Update Find Month Function for get_vol" />
     <MESSAGE value="unify all date formating issue" />
     <MESSAGE value="add export function" />
-    <option name="LAST_COMMIT_MESSAGE" value="add export function" />
+    <MESSAGE value="dev for loading external files" />
+    <option name="LAST_COMMIT_MESSAGE" value="dev for loading external files" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

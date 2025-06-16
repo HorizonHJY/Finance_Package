@@ -155,7 +155,6 @@
     const file = e.target.files[0];
     if (!file) return;
 
-    // 显示加载状态
     $('#loading').show();
     $('#content_page').hide();
 
@@ -164,23 +163,31 @@
       try {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
-
-        // 获取第一个工作表
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-        // 清空现有表格（保留首行）
-        $('#selection-table tbody').html($('#selection-table tbody tr').first());
+        // 1. 保存模板行并彻底清空表格
+        const $templateRow = $('#selection-table tbody tr.selection-row').first().clone();
+        $('#selection-table tbody').empty();
 
-        // 填充数据
+        // 2. 根据 jsonData 逐条插入
         jsonData.forEach(row => {
-          const $newRow = $('#selection-table tbody tr').first().clone();
-
-          // 映射Excel列到表单字段
+          const $newRow = $templateRow.clone();
+          // 填充值
           $newRow.find('.commodity-input').val(row['Product'] || '');
-          $newRow.find('.destination-select').html(`<option value="${row['Origin'] || ''}">${row['Origin'] || '--Select Origin--'}</option>`);
+          $newRow.find('.destination-select').html(
+            `<option value="${row['Origin'] || ''}">${row['Origin'] || '--Select Origin--'}</option>`
+          );
           $newRow.find('select[name="buy_sell[]"]').val((row['Buy/Sell'] || 'buy').toLowerCase());
-          $newRow.find('.deliver-month-select').val(row['Deliver Month'] || '');
+          // Deliver Month 动态添加并选中
+          const deliverValue = (row['Deliver Month'] || '').trim();
+          if (deliverValue) {
+            const $deliver = $newRow.find('.deliver-month-select');
+            if (!$deliver.find(`option[value="${deliverValue}"]`).length) {
+              $deliver.append(`<option value="${deliverValue}">${deliverValue}</option>`);
+            }
+            $deliver.val(deliverValue);
+          }
           $newRow.find('.price-input').val(row['Price ($/MT)'] || '');
           $newRow.find('.position-input').val(row['Position (MT)'] || '');
           $newRow.find('.mtm-input').val(row['Existing MTM'] || '');
@@ -188,13 +195,8 @@
           $('#selection-table tbody').append($newRow);
         });
 
-        // 触发商品选择事件以加载对应的国家
-        $('.commodity-input').trigger('input');
-
-        // 隐藏加载状态
         $('#loading').hide();
         $('#content_page').show();
-
       } catch (error) {
         console.error('Error processing Excel file:', error);
         alert('Error processing Excel file. Please check the format.');
