@@ -52,32 +52,36 @@
       <p>No data available. Please submit the form first.</p>
     {% endif %}
   </div>
-  <script>
-    // 将后端传来的 rows 和 columns_dict 注入到 JS
-    const rows        = {{ rows|tojson }};
-    const columns     = {{ columns_dict|tojson }};
+<script>
+document.getElementById('exportBtn').addEventListener('click', function() {
+    // 获取表格数据
+    const rows = [];
+    const headers = [];
 
-    document.getElementById('exportBtn').addEventListener('click', function() {
-      if (!rows.length) {
-        alert("No data to export.");
-        return;
-      }
-      // 构造 CSV
-      let csv = columns.join(',') + '\n';
-      rows.forEach(r => {
-        csv += columns.map(col => r[col]).join(',') + '\n';
-      });
-      // 触发下载
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = 'pfe_results.csv';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+    // 添加表头
+    document.querySelectorAll('table thead th').forEach(th => {
+        headers.push(th.innerText);
     });
-  </script>
+    rows.push(headers.join(','));
+
+    // 添加表格内容
+    document.querySelectorAll('table tbody tr').forEach(tr => {
+        const row = [];
+        tr.querySelectorAll('td').forEach(td => {
+            row.push(td.innerText);
+        });
+        rows.push(row.join(','));
+    });
+
+    // 生成 CSV 并下载
+    const csvContent = rows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'PFE_Results.csv');
+    link.click();
+});
+</script>
 </body>
 </html>
