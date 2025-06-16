@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% block title %}QuantLab - Credit PFE Calculator{% endblock %}
+{% block content %}
+
+<div class="container" style="height: 80vh;">
+  <div id="loading">
+    <p>Process is running. Please do not close this page.</p>
+    <img src="{{ url_for('static', filename='loading.gif') }}" style="width:80px"/>
+  </div>
+
+  <div id="content_page">
+    <h1 class="text-left">PFE Calculator</h1>
+    <p class="text-left">Inform below the combination of productions.</p>
+
+    <!-- 按钮组 - 添加了Excel功能 -->
+    <div class="d-flex justify-content-between mb-3">
+      <div>
+        <button type="button" id="add-row-btn" class="btn btn-primary">Add New Line</button>
+      </div>
+      <div>
+        <input type="file" id="excel-upload" accept=".xlsx, .xls" style="display: none;">
+        <button type="button" class="btn btn-success me-2" onclick="document.getElementById('excel-upload').click()">
+          Upload by template
+        </button>
+        <button type="button" class="btn btn-info" onclick="downloadTemplate()">
+          Download Template
+        </button>
+      </div>
+    </div>
+
+    <form action="{{ url_for('/credit/pfe_adhoc_run') }}" method="post">
+      <table id="selection-table" class="table table-striped">
+        <thead>
+          <tr>
+            <th scope="col">Product</th>
+            <th scope="col">Origin</th>
+            <th scope="col">Buy/Sell</th>
+            <th scope="col">Deliver Month</th>
+            <th scope="col">Price ($/MT)</th>
+            <th scope="col">Position (MT)</th>
+            <th scope="col">Existing MTM</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="selection-row">
+            <td>
+              <select name="commodity[]" class="commodity-input">
+                <option value="">Select Product</option>
+                {% for commodity in products_list %}
+                  <option value="{{ commodity }}">{{ commodity }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td>
+              <select name="destination[]" class="destination-select">
+                <option value="">Select Origin Country</option>
+              </select>
+            </td>
+            <td>
+              <select name="buy_sell[]">
+                <option value="buy">Buy</option>
+                <option value="sell">Sell</option>
+              </select>
+            </td>
+            <td>
+              <select name="deliver_date[]" class="deliver-month-select">
+                <option value="">--Select Month--</option>
+                {% for month in del_M %}
+                  <option value="{{ month }}">{{ month }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td>
+              <input type="number" name="price[]" class="price-input" placeholder="Contract Price" step="0.1" required />
+            </td>
+            <td>
+              <input type="number" name="position[]" class="position-input" placeholder="Contract position" step="0.1" required />
+            </td>
+            <td>
+              <input type="number" name="MTM[]" class="mtm-input" placeholder="Existing MTM" step="1" required />
+            </td>
+            <td>
+              <button type="button" class="btn btn-danger delete-row">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <button type="submit" class="btn btn-primary btn-submit">Run Calculator</button>
+    </form>
+  </div>
+</div>
+
+<!-- 加载必要的JS库 -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<script type="text/javascript">
+  // 添加行功能
+  $('#add-row-btn').on('click', function () {
+    const $source = $('#selection-table tbody tr.selection-row').first();
+    const $clone = $source.clone();
+    const newIndex = $('#selection-table tbody tr.selection-row').length;
+
+    $clone.find('.commodity-input').val('');
+    $clone.find('.destination-select').html('<option value="">--Select Destination--</option>');
+    $clone.find('.price-input').val('');
+    $clone.find('.position-input').val('');
+    $clone.find('.mtm-input').val('');
+
+    $clone.find('input[type="radio"]').each(function () {
+      $(this).attr('name', 'direction_' + newIndex).prop('checked', $(this).val() === 'Buy');
+    });
+
+    $('#selection-table tbody').append($clone);
+  });
+
+  // 动态加载国家列表
+  $(document).on('input', '.commodity-input', function () {
+    const comm = $(this).val();
+    const $row = $(this).closest('tr');
+    const $dest = $row.find('.destination-select');
+    const currentDest = $dest.val();
+
+    $dest.find('option:not(:first)').remove();
+    if (!comm) return;
+
+    fetch('/credit/get_origin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commodity: comm })
+    })
+      .then(r => r.json())
+      .then(origin => {
+        origin.forEach(d => {
+          $dest.append(`<option value="${d}">${d}</option>`);
+        });
+
+        if (currentDest && origin.includes(currentDest)) {
+          $dest.val(currentDest);
+        }
+      });
+  });
+
+  // 删除行功能
+  $(document).on('click', '.delete-row', function () {
+    if ($('#selection-table tbody tr.selection-row').length > 1) {
+      $(this).closest('tr').remove();
+    }
+  });
+
+  // Excel导入功能
+  document.getElementById('excel-upload').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // 显示加载状态
+    $('#loading').show();
+    $('#content_page').hide();
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+
+        // 获取第一个工作表
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        // 清空现有表格（保留首行）
+        $('#selection-table tbody').html($('#selection-table tbody tr').first());
+
+        // 填充数据
+        jsonData.forEach(row => {
+          const $newRow = $('#selection-table tbody tr').first().clone();
+
+          // 映射Excel列到表单字段
+          $newRow.find('.commodity-input').val(row['Product'] || '');
+          $newRow.find('.destination-select').html(`<option value="${row['Origin'] || ''}">${row['Origin'] || '--Select Origin--'}</option>`);
+          $newRow.find('select[name="buy_sell[]"]').val((row['Buy/Sell'] || 'buy').toLowerCase());
+          $newRow.find('.deliver-month-select').val(row['Deliver Month'] || '');
+          $newRow.find('.price-input').val(row['Price ($/MT)'] || '');
+          $newRow.find('.position-input').val(row['Position (MT)'] || '');
+          $newRow.find('.mtm-input').val(row['Existing MTM'] || '');
+
+          $('#selection-table tbody').append($newRow);
+        });
+
+        // 触发商品选择事件以加载对应的国家
+        $('.commodity-input').trigger('input');
+
+        // 隐藏加载状态
+        $('#loading').hide();
+        $('#content_page').show();
+
+      } catch (error) {
+        console.error('Error processing Excel file:', error);
+        alert('Error processing Excel file. Please check the format.');
+        $('#loading').hide();
+        $('#content_page').show();
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  // 下载模板功能
+  function downloadTemplate() {
+    // 创建示例数据
+    const templateData = [
+      {
+        "Product": "Product1",
+        "Origin": "Country1",
+        "Buy/Sell": "Buy",
+        "Deliver Month": "Jan-25",
+        "Price ($/MT)": 100,
+        "Position (MT)": 1000,
+        "Existing MTM": 5000
+      },
+      {
+        "Product": "Product2",
+        "Origin": "Country2",
+        "Buy/Sell": "Sell",
+        "Deliver Month": "Feb-25",
+        "Price ($/MT)": 150,
+        "Position (MT)": 2000,
+        "Existing MTM": 3000
+      }
+    ];
+
+    // 创建工作簿
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+
+    // 下载文件
+    XLSX.writeFile(wb, "PFE_Template.xlsx");
+  }
+</script>
+
+<style>
+  #loading {
+    display: none;
+    text-align: center;
+    margin-top: 50px;
+  }
+  .destination-select, .deliver-month-select, .commodity-input {
+    min-width: 150px;
+  }
+  .price-input, .position-input, .mtm-input {
+    max-width: 120px;
+  }
+</style>
+
+{% endblock %}
