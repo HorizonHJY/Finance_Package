@@ -58,17 +58,22 @@ document.getElementById('exportBtn').addEventListener('click', function() {
     const rows = [];
     const headers = [];
 
-    // 添加表头
+    // 添加表头（不需要特殊处理，一般不含逗号）
     document.querySelectorAll('table thead th').forEach(th => {
         headers.push(th.innerText);
     });
     rows.push(headers.join(','));
 
-    // 添加表格内容
+    // 添加表格内容（关键修改点）
     document.querySelectorAll('table tbody tr').forEach(tr => {
         const row = [];
         tr.querySelectorAll('td').forEach(td => {
-            row.push(td.innerText);
+            let text = td.innerText;
+            // 如果内容包含逗号或双引号，用双引号包裹并转义已有双引号
+            if (text.includes(',') || text.includes('"')) {
+                text = `"${text.replace(/"/g, '""')}"`; // 转义双引号
+            }
+            row.push(text);
         });
         rows.push(row.join(','));
     });
@@ -82,6 +87,26 @@ document.getElementById('exportBtn').addEventListener('click', function() {
     link.setAttribute('download', 'PFE_Results.csv');
     link.click();
 });
+
 </script>
+ <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script>
+  document.getElementById('exportBtn').addEventListener('click', function() {
+      // 获取表格元素
+      const table = document.querySelector('table');
+
+      // 将 HTML 表格转换为 Excel 工作簿
+      const workbook = XLSX.utils.table_to_book(table, {
+          sheet: "PFE Results", // 自定义 Sheet 名称
+          raw: true            // 保留原始数据格式（如数字、日期）
+      });
+
+      // 生成 Excel 文件并下载
+      XLSX.writeFile(workbook, 'PFE_Results.xlsx', {
+          bookType: 'xlsx',    // 文件类型
+          compression: true    // 启用压缩（减小文件大小）
+      });
+  });
+  </script>
 </body>
 </html>
