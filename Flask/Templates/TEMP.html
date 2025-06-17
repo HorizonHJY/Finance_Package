@@ -1,10 +1,484 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+# pfe_controller.py
 
-</body>
-</html>
+from flask import Blueprint, render_template, request, jsonify, g
+import pandas as pd
+from datetime import date
+import time
+
+# 假设这两个工具函数你已有
+from utils import deliver_month_list, convert_deliver_month_to_date  
+# 以及你的映射表
+# from config import CURVE_MAPPING_LIST, initial_viya_vol_source  
+
+bp = Blueprint("pfe", __name__)
+
+class PFEController:
+    def __init__(self, curve_mapping, vol_source):
+        self._mapping = curve_mapping
+        self._vol_source = vol_source
+        self._products = sorted({r["commodity"] for r in curve_mapping})
+        self._deliver_months = deliver_month_list()
+        # 延迟加载标志
+        self._viya_vol = None
+
+    def _load_vol_if_needed(self):
+        if self._viya_vol is None:
+            # 这里调用你的 jv.dowloaddata API
+            self._viya_vol = jv.dowloaddata(self._vol_source)
+            # 如果需要，转成 DataFrame：
+            self._viya_vol = pd.DataFrame(self._viya_vol)
+
+    def credit_pfe_calculator(self):
+        """GET 页面：一次性加载所有静态数据"""
+        self._load_vol_if_needed()
+        return render_template(
+            'credit_pfe_calculator.html',
+            products_list=self._products,
+            del_ml=self._deliver_months
+        )
+
+    def get_origin(self):
+        """POST AJAX：返回目的地列表 (不重复加载 vol)"""
+        commodity = request.json.get("commodity")
+        dests = sorted({
+            row["destination"]
+            for row in self._mapping
+            if row["commodity"] == commodity
+        })
+        return jsonify(dests)
+
+    def credit_pfe_adhoc_run(self):
+        """POST 表单提交：计算 PFE，复用已加载的 vol"""
+        self._load_vol_if_needed()
+        form = request.form
+        # 构造 input_list（保持你原来的逻辑）
+        input_list = []
+        commodities  = form.getlist("commodity[]")
+        destinations = form.getlist("destination[]")
+        directions   = form.getlist("direction[]")
+        deliver_dates= form.getlist("deliver_date[]")
+        positions    = form.getlist("position[]")
+        prices       = form.getlist("price[]")
+        exi_mtms     = form.getlist("MTM[]")
+
+        for i in range(len(commodities)):
+            input_list.append({
+                "commodity":   commodities[i],
+                "destination": destinations[i],
+                "direction":   directions[i],
+                "deliver_date":deliver_dates[i],
+                "position":    positions[i],
+                "price":       prices[i],
+                "exi_mtm":     exi_mtms[i]
+            })
+
+        # 调用私有计算方法
+        df = self._calculate_pfe(input_list)
+        run_time = time.time() - g.start
+
+        return render_template(
+            'credit_pfe_result.html',
+            rows=df.to_dict(orient="records"),
+            columns_dict=df.columns.tolist(),
+            run_time=run_time
+        )
+
+    def _calculate_pfe(self, input_list):
+        """内部方法：根据已缓存的 self._viya_vol 计算 PFE"""
+        results = []
+        as_of = date.today()  # 或者固定某个评估日
+        for data in input_list:
+            # 1. 查找 curve_root
+            root = next(
+                (r["curve_root"] for r in self._mapping
+                 if r["commodity"]==data["commodity"] and r["destination"]==data["destination"]),
+                None
+            )
+            # 2. 获取 vol
+            vol_row = self._viya_vol[
+                self._viya_vol["RISK_FACTOR"] == root
+            ]
+            if vol_row.empty:
+                # 找不到波动率时的处理
+                continue
+            vol = vol_row.iloc[0]["VOL"]
+
+            # 3. 交割月转日期 & 计算到期
+            d_date = convert_deliver_month_to_date(data["deliver_date"])
+            tte = (d_date - as_of).days / 365.25
+
+            # 4. 单位敞口计算（示例公式，可替换）
+            term = 1.645 * vol * (tte**0.5) - 0.5 * (vol**2) * tte
+            if data["direction"] == "Buy":
+                ue = float(data["price"]) * (-1 + pd.np.exp(term))
+            else:
+                ue = float(data["price"]) * (1 - pd.np.exp(-term))
+            te = ue * float(data["position"]) + float(data["exi_mtm"])
+
+            results.append({
+                **data,
+                "risk_curve": root,
+                "vol": round(vol * 100, 6),
+                "time_to_exp": round(tte, 6),
+                "exposure": round(ue, 6),
+                "total_exposure": round(te, 6)
+            })
+
+        return pd.DataFrame(results)
+
+
+# 实例化（只在应用启动时做一次，不暴露给外部）
+pfe_ctrl = PFEController(
+    curve_mapping=CURVE_MAPPING_LIST,
+    vol_source=viya_vol_source
+)
+
+# 路由绑定
+bp.add_url_rule(
+    '/credit_pfe_calculator',
+    view_func=pfe_ctrl.credit_pfe_calculator,
+    methods=['GET']
+)
+bp.add_url_rule(
+    '/get_origin',
+    view_func=pfe_ctrl.get_origin,
+    methods=['POST']
+)
+bp.add_url_rule(
+    '/credit_pfe_adhoc_run',
+    view_func=pfe_ctrl.credit_pfe_adhoc_run,
+    methods=['POST']
+)
+
+
+
+
+#deep seek Version
+# pfe_controller.py
+
+from flask import Blueprint, render_template, request, jsonify, g, current_app
+import pandas as pd
+import numpy as np
+from datetime import date, datetime
+import time
+import threading
+import logging
+
+# 假设这些工具函数和配置已定义
+# from utils import deliver_month_list, convert_deliver_month_to_date
+# from config import CURVE_MAPPING_LIST, VIYA_VOL_SOURCE
+
+# 创建蓝图
+bp = Blueprint("pfe", __name__)
+
+# 如果工具函数未定义，这里提供简单实现
+def deliver_month_list():
+    """返回未来12个月的交付月份列表"""
+    today = date.today()
+    months = []
+    for i in range(1, 13):
+        month = today.month + i
+        year = today.year + (month - 1) // 12
+        month = (month - 1) % 12 + 1
+        months.append(f"{year}-{month:02d}")
+    return months
+
+def convert_deliver_month_to_date(month_str):
+    """将交付月份字符串转换为日期对象（设置为当月第一天）"""
+    year, month = map(int, month_str.split('-'))
+    return date(year, month, 1)
+
+class PFEController:
+    def __init__(self, curve_mapping, vol_source, as_of_date=None):
+        """
+        初始化PFE控制器
+
+        参数:
+        curve_mapping: 商品-目的地到风险曲线的映射列表
+        vol_source: 波动率数据源标识符
+        as_of_date: 固定评估日期（可选）
+        """
+        self._mapping = curve_mapping
+        self._vol_source = vol_source
+        self._products = sorted({r["commodity"] for r in curve_mapping})
+        self._deliver_months = deliver_month_list()
+        self._viya_vol = None
+        self._vol_lock = threading.Lock()
+        self.as_of_date = as_of_date or date.today()
+
+        # 记录初始化日志
+        current_app.logger.info(f"PFEController initialized with {len(curve_mapping)} mappings")
+
+    def _load_vol_if_needed(self):
+        """加载波动率数据（线程安全）"""
+        if self._viya_vol is not None:
+            return
+
+        with self._vol_lock:
+            # 双重检查锁定
+            if self._viya_vol is not None:
+                return
+
+            try:
+                current_app.logger.info("Loading volatility data from source...")
+
+                # 模拟数据加载 - 实际应用中替换为你的实现
+                # self._viya_vol = jv.downloaddata(self._vol_source)
+
+                # 创建模拟数据
+                data = {
+                    "RISK_FACTOR": ["CRUDE_OIL_ME", "NATURAL_GAS_US", "COAL_AU"],
+                    "VOL": [0.25, 0.35, 0.18],
+                    "LAST_UPDATED": [datetime.now()] * 3
+                }
+                self._viya_vol = pd.DataFrame(data)
+
+                current_app.logger.info(f"Loaded volatility data: {len(self._viya_vol)} records")
+
+            except Exception as e:
+                current_app.logger.error(f"Failed to load volatility data: {str(e)}")
+                # 创建空的DataFrame防止后续错误
+                self._viya_vol = pd.DataFrame(columns=["RISK_FACTOR", "VOL"])
+                raise
+
+    def credit_pfe_calculator(self):
+        """显示PFE计算器页面"""
+        try:
+            self._load_vol_if_needed()
+            return render_template(
+                'credit_pfe_calculator.html',
+                products_list=self._products,
+                del_ml=self._deliver_months,
+                as_of_date=self.as_of_date.strftime('%Y-%m-%d')
+            )
+        except Exception as e:
+            current_app.logger.error(f"Failed to show PFE calculator: {str(e)}")
+            return render_template('error.html', message="无法加载计算器"), 500
+
+    def get_origin(self):
+        """获取商品对应的目的地列表"""
+        try:
+            commodity = request.json.get("commodity")
+            if not commodity:
+                return jsonify({"error": "缺少商品参数"}), 400
+
+            dests = sorted({
+                row["destination"]
+                for row in self._mapping
+                if row["commodity"] == commodity
+            })
+
+            current_app.logger.debug(f"Retrieved destinations for {commodity}: {dests}")
+            return jsonify(dests)
+
+        except Exception as e:
+            current_app.logger.error(f"Failed to get destinations: {str(e)}")
+            return jsonify({"error": "获取目的地失败"}), 500
+
+    def credit_pfe_adhoc_run(self):
+        """执行PFE计算"""
+        g.start = time.time()
+
+        try:
+            self._load_vol_if_needed()
+            input_list = self._parse_form_data(request.form)
+
+            if not input_list:
+                return render_template('error.html', message="未提供计算数据"), 400
+
+            df = self._calculate_pfe(input_list)
+            run_time = round(time.time() - g.start, 3)
+
+            current_app.logger.info(f"Calculated PFE for {len(df)} positions in {run_time}s")
+
+            return render_template(
+                'credit_pfe_result.html',
+                rows=df.to_dict(orient="records"),
+                columns_dict=df.columns.tolist(),
+                run_time=run_time
+            )
+
+        except Exception as e:
+            current_app.logger.exception("PFE calculation failed")
+            return render_template('error.html', message=f"计算失败: {str(e)}"), 500
+
+    def _parse_form_data(self, form):
+        """解析表单数据为输入列表"""
+        input_list = []
+        field_map = {
+            "commodity": "commodity[]",
+            "destination": "destination[]",
+            "direction": "direction[]",
+            "deliver_date": "deliver_date[]",
+            "position": "position[]",
+            "price": "price[]",
+            "exi_mtm": "MTM[]"
+        }
+
+        # 获取商品列表作为索引
+        commodities = form.getlist(field_map["commodity"])
+        num_items = len(commodities)
+
+        if num_items == 0:
+            return []
+
+        for i in range(num_items):
+            item = {}
+            for key, form_key in field_map.items():
+                # 特殊处理方向字段
+                if key == "direction":
+                    # 尝试获取 direction_i 格式
+                    dir_value = form.get(f"direction_{i}")
+                    if dir_value:
+                        item[key] = dir_value
+                    else:
+                        # 回退到列表格式
+                        values = form.getlist(form_key)
+                        item[key] = values[i] if i < len(values) else ""
+                else:
+                    values = form.getlist(form_key)
+                    item[key] = values[i] if i < len(values) else ""
+
+            # 验证必要字段
+            if not all(item.get(k) for k in ["commodity", "destination", "direction"]):
+                current_app.logger.warning(f"Skipping incomplete item: {item}")
+                continue
+
+            input_list.append(item)
+
+        current_app.logger.debug(f"Parsed {len(input_list)} items from form")
+        return input_list
+
+    def _calculate_pfe(self, input_list):
+        """计算每个输入项的PFE"""
+        results = []
+
+        for idx, data in enumerate(input_list):
+            try:
+                # 1. 查找curve_root
+                root = self._find_curve_root(data["commodity"], data["destination"])
+
+                # 2. 获取波动率
+                vol = self._get_volatility(root)
+
+                # 3. 计算时间到期
+                d_date = convert_deliver_month_to_date(data["deliver_date"])
+                tte = (d_date - self.as_of_date).days / 365.25
+
+                # 4. 单位敞口计算
+                price = float(data["price"])
+                position = float(data["position"])
+                exi_mtm = float(data["exi_mtm"])
+
+                # 根据方向计算敞口
+                if data["direction"] == "Buy":
+                    ue = self._calculate_buy_exposure(price, vol, tte)
+                else:
+                    ue = self._calculate_sell_exposure(price, vol, tte)
+
+                # 5. 计算总敞口
+                te = ue * position + exi_mtm
+
+                results.append({
+                    "commodity": data["commodity"],
+                    "destination": data["destination"],
+                    "direction": data["direction"],
+                    "deliver_date": data["deliver_date"],
+                    "price": price,
+                    "position": position,
+                    "exi_mtm": exi_mtm,
+                    "risk_curve": root,
+                    "vol": round(vol * 100, 4),  # 转换为百分比
+                    "time_to_exp": round(tte, 4),
+                    "exposure": round(ue, 4),
+                    "total_exposure": round(te, 4),
+                    "error": None
+                })
+
+            except Exception as e:
+                results.append({
+                    "commodity": data.get("commodity", "N/A"),
+                    "destination": data.get("destination", "N/A"),
+                    "direction": data.get("direction", "N/A"),
+                    "deliver_date": data.get("deliver_date", "N/A"),
+                    "price": data.get("price", "N/A"),
+                    "position": data.get("position", "N/A"),
+                    "exi_mtm": data.get("exi_mtm", "N/A"),
+                    "risk_curve": root if "root" in locals() else "N/A",
+                    "vol": "N/A",
+                    "time_to_exp": "N/A",
+                    "exposure": "N/A",
+                    "total_exposure": "N/A",
+                    "error": str(e)
+                })
+                current_app.logger.error(f"Calculation failed for item {idx}: {str(e)}")
+
+        return pd.DataFrame(results)
+
+    def _find_curve_root(self, commodity, destination):
+        """查找商品和目的地对应的风险曲线"""
+        for row in self._mapping:
+            if row["commodity"] == commodity and row["destination"] == destination:
+                return row["curve_root"]
+
+        raise ValueError(f"找不到风险曲线: 商品={commodity}, 目的地={destination}")
+
+    def _get_volatility(self, curve_root):
+        """获取特定曲线的波动率"""
+        if self._viya_vol.empty:
+            raise ValueError("波动率数据未加载")
+
+        vol_row = self._viya_vol[self._viya_vol["RISK_FACTOR"] == curve_root]
+
+        if vol_row.empty:
+            raise ValueError(f"找不到波动率数据: {curve_root}")
+
+        return vol_row.iloc[0]["VOL"]
+
+    def _calculate_buy_exposure(self, price, vol, tte):
+        """计算买入方向的单位敞口"""
+        # 简化公式 - 实际应用中替换为你的公式
+        term = 1.645 * vol * np.sqrt(tte) - 0.5 * (vol**2) * tte
+        return price * (-1 + np.exp(term))
+
+    def _calculate_sell_exposure(self, price, vol, tte):
+        """计算卖出方向的单位敞口"""
+        # 简化公式 - 实际应用中替换为你的公式
+        term = 1.645 * vol * np.sqrt(tte) - 0.5 * (vol**2) * tte
+        return price * (1 - np.exp(-term))
+
+# 在应用初始化文件中使用此控制器
+# app.py 或 __init__.py 中：
+
+# 配置数据（实际应用中从配置模块导入）
+CURVE_MAPPING_LIST = [
+    {"commodity": "Crude Oil", "destination": "Middle East", "curve_root": "CRUDE_OIL_ME"},
+    {"commodity": "Natural Gas", "destination": "US", "curve_root": "NATURAL_GAS_US"},
+    {"commodity": "Coal", "destination": "Australia", "curve_root": "COAL_AU"},
+]
+
+VIYA_VOL_SOURCE = "risk_vol_data_source"
+
+# 创建控制器实例
+pfe_ctrl = PFEController(
+    curve_mapping=CURVE_MAPPING_LIST,
+    vol_source=VIYA_VOL_SOURCE,
+    as_of_date=date(2025, 5, 23)  # 固定评估日
+)
+
+# 注册蓝图路由
+bp.add_url_rule(
+    '/credit_pfe_calculator',
+    view_func=pfe_ctrl.credit_pfe_calculator,
+    methods=['GET']
+)
+bp.add_url_rule(
+    '/get_origin',
+    view_func=pfe_ctrl.get_origin,
+    methods=['POST']
+)
+bp.add_url_rule(
+    '/credit_pfe_adhoc_run',
+    view_func=pfe_ctrl.credit_pfe_adhoc_run,
+    methods=['POST']
+)
