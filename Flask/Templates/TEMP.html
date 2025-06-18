@@ -482,3 +482,36 @@ bp.add_url_rule(
     view_func=pfe_ctrl.credit_pfe_adhoc_run,
     methods=['POST']
 )
+
+
+# 假设 CURVE_MAPPING_LIST 已定义
+# 1. 提取 commodity 和 destination 字段
+mapping_data = [
+    {"commodity": row["commodity"], "destination": row["destination"]}
+    for row in CURVE_MAPPING_LIST
+]
+
+# 2. 转为 DataFrame 并去重
+mapping_df = pd.DataFrame(mapping_data).drop_duplicates()
+
+# 3. 添加新 sheet
+with pd.ExcelWriter(file_path, engine="xlsxwriter") as writer:
+    template_df.to_excel(writer, index=False, sheet_name="PFE")
+
+    # 新增映射表
+    mapping_df.to_excel(writer, index=False, sheet_name="Mapping_Ref")
+
+    workbook  = writer.book
+    worksheet = writer.sheets["PFE"]
+
+    # 原有验证 + 日期格式化
+    direction_validation = {
+        "validate": 'list',
+        "source": ['Buy', 'Sell']
+    }
+    worksheet.data_validation("E2:E100", direction_validation)
+
+    date_format = workbook.add_format({'num_format': 'yyyy-mm-dd'})
+    worksheet.set_column('A:A', 15, date_format)
+
+print(f"PFE template created: {file_path}")
