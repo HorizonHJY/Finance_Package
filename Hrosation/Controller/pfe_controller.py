@@ -181,7 +181,7 @@ def calc_pfe_core(input_list):
 def credit_pfe_result():
     if request.method == "POST":
         input_list = []
-        # Flask 的 request.form 是 MultiDict
+        # Hrosation 的 request.form 是 MultiDict
         form = request.form
         # 提取所有字段的列表
         commodities = form.getlist("commodity[]")

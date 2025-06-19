@@ -4,7 +4,19 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a528062-c759-4e0b-a22c-1b5533d9f359" name="更改" comment="准备封装函数 做参考" />
+    <list default="true" id="2a528062-c759-4e0b-a22c-1b5533d9f359" name="更改" comment="傻逼人 改需求 但是这是工作">
+      <change beforePath="$PROJECT_DIR$/.idea/Finance_Package.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Finance_Package.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Flask/Controller/pfe_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/Hrosation/Controller/pfe_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Flask/Templates/B_PFE_Front.html" beforeDir="false" afterPath="$PROJECT_DIR$/Hrosation/Templates/B_PFE_Front.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Flask/Templates/PFE_front.html" beforeDir="false" afterPath="$PROJECT_DIR$/Hrosation/Templates/PFE_front.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Flask/Templates/TEMP.html" beforeDir="false" afterPath="$PROJECT_DIR$/Hrosation/Templates/TEMP.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Flask/Templates/credit_pfe_result.html" beforeDir="false" afterPath="$PROJECT_DIR$/Hrosation/Templates/credit_pfe_result.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Flask/Templates/credit_pfe_result_s.html" beforeDir="false" afterPath="$PROJECT_DIR$/Hrosation/Templates/credit_pfe_result_s.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Flask/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/Hrosation/app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Flask/static/style.css" beforeDir="false" afterPath="$PROJECT_DIR$/Hrosation/static/style.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/quantlib.py" beforeDir="false" afterPath="$PROJECT_DIR$/quantlib.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -41,24 +53,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "DefaultHtmlFileTemplate": "HTML File",
-    "Python tests.Python tests in FE.py.executor": "Run",
-    "Python.FE.executor": "Run",
-    "Python.Modeling.executor": "Run",
-    "Python.app.executor": "Run",
-    "Python.quantlib.executor": "Debug",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "main",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "D:/Anaconda/condabin/conda.bat",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;DefaultHtmlFileTemplate&quot;: &quot;HTML File&quot;,
+    &quot;Python tests.Python tests in FE.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python.FE.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Modeling.executor&quot;: &quot;Run&quot;,
+    &quot;Python.app.executor&quot;: &quot;Run&quot;,
+    &quot;Python.quantlib.executor&quot;: &quot;Debug&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/Anaconda/condabin/conda.bat&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
   }
-}]]></component>
+}</component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -203,7 +215,15 @@
       <option name="project" value="LOCAL" />
       <updated>1750134685611</updated>
     </task>
-    <option name="localTasksCounter" value="17" />
+    <task id="LOCAL-00017" summary="傻逼人 改需求 但是这是工作">
+      <option name="closed" value="true" />
+      <created>1750221820875</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1750221820875</updated>
+    </task>
+    <option name="localTasksCounter" value="18" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -228,7 +248,8 @@
     <MESSAGE value="add export function" />
     <MESSAGE value="dev for loading external files" />
     <MESSAGE value="准备封装函数 做参考" />
-    <option name="LAST_COMMIT_MESSAGE" value="准备封装函数 做参考" />
+    <MESSAGE value="傻逼人 改需求 但是这是工作" />
+    <option name="LAST_COMMIT_MESSAGE" value="傻逼人 改需求 但是这是工作" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

@@ -1,12 +1,11 @@
 # app.py
 from flask import Flask
 from flask_cors import CORS
-import Flask.Controller.pfe_controller as controller
+import Hrosation.Controller.pfe_controller as controller
 
 app = Flask(__name__)
 CORS(app)
 
-# 显式绑定路由到函数
 app.add_url_rule('/', view_func=controller.index)
 app.add_url_rule('/get_destinations', view_func=controller.get_destinations, methods=['POST'])
 app.add_url_rule('/get_commodities', view_func=controller.get_commodities, methods=['POST'])
