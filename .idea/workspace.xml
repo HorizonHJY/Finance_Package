@@ -4,17 +4,24 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a528062-c759-4e0b-a22c-1b5533d9f359" name="更改" comment="傻逼人 改需求 但是这是工作">
+    <list default="true" id="2a528062-c759-4e0b-a22c-1b5533d9f359" name="更改" comment="package ini">
+      <change afterPath="$PROJECT_DIR$/Done/Projects/PJO/common.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Horkit/horql.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Hormax/app/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Hormax/requirements.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/Finance_Package.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Finance_Package.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Flask/Controller/pfe_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/Hrosation/Controller/pfe_controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Flask/Templates/B_PFE_Front.html" beforeDir="false" afterPath="$PROJECT_DIR$/Hrosation/Templates/B_PFE_Front.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Flask/Templates/PFE_front.html" beforeDir="false" afterPath="$PROJECT_DIR$/Hrosation/Templates/PFE_front.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Flask/Templates/TEMP.html" beforeDir="false" afterPath="$PROJECT_DIR$/Hrosation/Templates/TEMP.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Flask/Templates/credit_pfe_result.html" beforeDir="false" afterPath="$PROJECT_DIR$/Hrosation/Templates/credit_pfe_result.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Flask/Templates/credit_pfe_result_s.html" beforeDir="false" afterPath="$PROJECT_DIR$/Hrosation/Templates/credit_pfe_result_s.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Flask/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/Hrosation/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Flask/static/style.css" beforeDir="false" afterPath="$PROJECT_DIR$/Hrosation/static/style.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Hrosation/Controller/pfe_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/Done/Pculator/Controller/pfe_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Hrosation/Templates/B_PFE_Front.html" beforeDir="false" afterPath="$PROJECT_DIR$/Done/Pculator/Templates/B_PFE_Front.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Hrosation/Templates/PFE_front.html" beforeDir="false" afterPath="$PROJECT_DIR$/Done/Pculator/Templates/PFE_front.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Hrosation/Templates/TEMP.html" beforeDir="false" afterPath="$PROJECT_DIR$/Done/Pculator/Templates/TEMP.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Hrosation/Templates/credit_pfe_result.html" beforeDir="false" afterPath="$PROJECT_DIR$/Done/Pculator/Templates/credit_pfe_result.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Hrosation/Templates/credit_pfe_result_s.html" beforeDir="false" afterPath="$PROJECT_DIR$/Done/Pculator/Templates/credit_pfe_result_s.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Hrosation/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/Done/Pculator/app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Hrosation/static/style.css" beforeDir="false" afterPath="$PROJECT_DIR$/Done/Pculator/static/style.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Projects/PJO/common.py" beforeDir="false" afterPath="$PROJECT_DIR$/Done/Pculator/ini_engine.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Projects/PJO/potfu.py" beforeDir="false" afterPath="$PROJECT_DIR$/Done/Projects/PJO/potfu.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/quantlib.py" beforeDir="false" afterPath="$PROJECT_DIR$/quantlib.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -25,9 +32,20 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
-        <option value="Python Script" />
         <option value="HTML File" />
+        <option value="Python Script" />
       </list>
+    </option>
+  </component>
+  <component name="FlaskConsoleOptions" custom-start-script="import sys; print('Python %s on %s' % (sys.version, sys.platform)); sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo, NoAppException&#10;for module in [&quot;main.py&quot;, &quot;wsgi.py&quot;, &quot;app.py&quot;]:&#10;    try: locals().update(ScriptInfo(app_import_path=module, create_app=None).load_app().make_shell_context()); print(&quot;\nFlask App: %s&quot; % app.import_name); break&#10;    except NoAppException: pass">
+    <envs>
+      <env key="FLASK_APP" value="app" />
+    </envs>
+    <option name="myCustomStartScript" value="import sys; print('Python %s on %s' % (sys.version, sys.platform)); sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo, NoAppException&#10;for module in [&quot;main.py&quot;, &quot;wsgi.py&quot;, &quot;app.py&quot;]:&#10;    try: locals().update(ScriptInfo(app_import_path=module, create_app=None).load_app().make_shell_context()); print(&quot;\nFlask App: %s&quot; % app.import_name); break&#10;    except NoAppException: pass" />
+    <option name="myEnvs">
+      <map>
+        <entry key="FLASK_APP" value="app" />
+      </map>
     </option>
   </component>
   <component name="Git.Settings">
@@ -53,28 +71,41 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;DefaultHtmlFileTemplate&quot;: &quot;HTML File&quot;,
-    &quot;Python tests.Python tests in FE.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python.FE.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Modeling.executor&quot;: &quot;Run&quot;,
-    &quot;Python.app.executor&quot;: &quot;Run&quot;,
-    &quot;Python.quantlib.executor&quot;: &quot;Debug&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/Anaconda/condabin/conda.bat&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "DefaultHtmlFileTemplate": "HTML File",
+    "Python tests.Python tests in FE.py.executor": "Run",
+    "Python.FE.executor": "Run",
+    "Python.Modeling.executor": "Run",
+    "Python.app.executor": "Run",
+    "Python.quantlib.executor": "Debug",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "git-widget-placeholder": "main",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "D:/Anaconda/condabin/conda.bat",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.lookFeel",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Horiz\PycharmProjects\Finance_Package\Done" />
+      <recent name="C:\Users\Horiz\PycharmProjects\Finance_Package\Pculator" />
+    </key>
+  </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-0e3be3396995-c546a90a8094-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-242.23339.19" />
+        <option value="bundled-js-predefined-d6986cc7102b-b26f3e71634d-JavaScript-PY-251.26094.141" />
+        <option value="bundled-python-sdk-9f8e2b94138c-36ea0e71a18c-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.26094.141" />
       </set>
     </attachedChunks>
   </component>
@@ -86,6 +117,8 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1745066046349</updated>
+      <workItem from="1750434258835" duration="48000" />
+      <workItem from="1750434318483" duration="2576000" />
     </task>
     <task id="LOCAL-00001" summary="1">
       <option name="closed" value="true" />
@@ -223,8 +256,19 @@
       <option name="project" value="LOCAL" />
       <updated>1750221820875</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="package ini">
+      <option name="closed" value="true" />
+      <created>1750347590716</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1750347590716</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
     <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="TAB_STATES">
@@ -249,19 +293,20 @@
     <MESSAGE value="dev for loading external files" />
     <MESSAGE value="准备封装函数 做参考" />
     <MESSAGE value="傻逼人 改需求 但是这是工作" />
-    <option name="LAST_COMMIT_MESSAGE" value="傻逼人 改需求 但是这是工作" />
+    <MESSAGE value="package ini" />
+    <option name="LAST_COMMIT_MESSAGE" value="package ini" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/quantlib.py</url>
-          <line>40</line>
+          <line>37</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/quantlib.py</url>
-          <line>38</line>
+          <line>35</line>
           <option name="timeStamp" value="3" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -271,5 +316,8 @@
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/Finance_Package$app.coverage" NAME="app Coverage Results" MODIFIED="1750434745918" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Done/Pculator" />
   </component>
 </project>

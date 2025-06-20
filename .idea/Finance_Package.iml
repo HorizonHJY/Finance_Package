@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module version="4">
   <component name="PyDocumentationSettings">
-    <option name="format" value="GOOGLE" />
-    <option name="myDocStringFormat" value="Google" />
+    <option name="format" value="PLAIN" />
+    <option name="myDocStringFormat" value="Plain" />
   </component>
-  <component name="PyNamespacePackagesService">
-    <option name="namespacePackageFolders">
+  <component name="TemplatesService">
+    <option name="TEMPLATE_CONFIGURATION" value="Jinja2" />
+    <option name="TEMPLATE_FOLDERS">
       <list>
-        <option value="$MODULE_DIR$/Horkit" />
+        <option value="$MODULE_DIR$/Done/Pculator/Templates" />
       </list>
     </option>
   </component>
