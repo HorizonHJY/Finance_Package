@@ -31,6 +31,13 @@ class PFEEngine:
         self.us_holidays = holidays.US(years=current_year)
 
     @staticmethod
+    def get_prod_list() -> list[str]:
+        """
+        Return sorted list of available products (commodities) from curve mapping.
+        """
+        return sorted({row['commodity'] for _, row in CURVE_MAPPING_LIST.iterrows()})
+
+    @staticmethod
     def convert_deliver_month_to_date(date_str: str) -> date | None:
         """
         Convert a deliver month string 'MMM-YY' to the last day of that month.
@@ -38,7 +45,6 @@ class PFEEngine:
         try:
             month_str, year_short = date_str.strip().split('-')
             first_day = datetime.strptime(f"{month_str}-{year_short}", "%b-%y")
-            # go to first day of next month, then subtract one day
             last_day = (first_day.replace(day=1) + relativedelta(months=1) - relativedelta(days=1)).date()
             return last_day
         except Exception:
@@ -55,15 +61,13 @@ class PFEEngine:
         months = pd.date_range(start=start, end=end, freq='M')
         return [d.strftime('%b-%y') for d in months]
 
-    @staticmethod
-    def get_aod_list(days: int = 31) -> list[date]:
+    def get_aod_list(self, days: int = 31) -> list[str]:
         """
-        Get list of recent workdays (excluding weekends and US holidays).
+        Get list of recent workdays (excluding weekends and US holidays), formatted as 'YYYY-MM-DD'.
         """
         today = datetime.today().date()
         date_range = [today - timedelta(days=i) for i in range(days)]
-        us_holidays = holidays.US(years=today.year)
-        workdays = [d for d in date_range if d.weekday() < 5 and d not in us_holidays]
+        workdays = [d.strftime('%Y-%m-%d') for d in date_range if d.weekday() < 5 and d not in self.us_holidays]
         return workdays
 
     @staticmethod
@@ -114,9 +118,7 @@ class PFEEngine:
         date_list = self.get_date_list(risk_curve_root)
         if not date_list:
             return None
-        # find nearest
         match = min(date_list, key=lambda d: abs((d - first_day).days))
-        # build risk factor code
         month_code = [k for k,v in MONTH_CODE_MAP.items() if v == match.strftime('%b')][0]
         year_short = str(match.year)[-2:]
         return f"{risk_curve_root}_{month_code}{year_short}"
@@ -131,14 +133,10 @@ class PFEEngine:
         if sub.empty:
             logger.warning(f"No volatility for {risk_curve} on {as_of_date}")
             return None
-        # convert daily vol to annualized (sqrt(252))
         return float(sub.iloc[0] * math.sqrt(252))
 
     @staticmethod
     def calculate_time_to_expiry(as_of_date: date, delivery_date: date) -> float:
-        """
-        Compute year fraction between as_of_date and delivery_date.
-        """
         days = (delivery_date - as_of_date).days
         return days / 365.0
 
@@ -149,9 +147,6 @@ class PFEEngine:
         contract_vol: float,
         time_to_exp: float
     ) -> float:
-        """
-        Compute PFE adjustment based on direction, price, vol, and time.
-        """
         buy_term = 1.645 * contract_vol * math.sqrt(time_to_exp) - 0.5 * contract_vol**2 * time_to_exp
         sell_term = -1.645 * contract_vol * math.sqrt(time_to_exp) - 0.5 * contract_vol**2 * time_to_exp
         if direction.lower() == 'buy':
@@ -160,21 +155,15 @@ class PFEEngine:
             return contract_price * (1 - math.exp(sell_term))
 
     def process_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Apply full PFE pipeline: convert dates, match curves, fetch vols, compute PFE and exposures.
-        """
-        # ensure required cols
         required = ['as_of_date','product','origin','deliver_month','direction','contract_price','Existing_MTM']
         missing = set(required) - set(df.columns)
         if missing:
             logger.error(f"Missing columns: {missing}")
             return df
-        # convert types
         df['as_of_date'] = pd.to_datetime(df['as_of_date']).dt.date
         df['delivery_date'] = df['deliver_month'].apply(self.convert_deliver_month_to_date)
         df['time_to_exp'] = df.apply(
-            lambda r: self.calculate_time_to_expiry(r['as_of_date'], r['delivery_date'])
-            if r['delivery_date'] else np.nan,
+            lambda r: self.calculate_time_to_expiry(r['as_of_date'], r['delivery_date']) if r['delivery_date'] else np.nan,
             axis=1
         )
         df['Risk_Curve'] = df.apply(lambda r: self.risk_cr(r['product'], r['origin']), axis=1)
@@ -191,37 +180,79 @@ class PFEEngine:
             ) if r['contract_vol'] and r['time_to_exp']>0 else 0.0,
             axis=1
         )
-        df['PFE_Output'] = df['PFE_Value'] * df['position']
+        df['PFE_Output'] = df['PFE_Value'] * df.get('position', 1)
         df['Total_Exposure'] = df['PFE_Output'] + df['Existing_MTM']
         return df
 
     @staticmethod
     def write_results(df: pd.DataFrame, file_path: str) -> None:
-        """
-        Write output DataFrame to Excel with formatting.
-        """
         with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
             df.to_excel(writer, index=False, sheet_name='PFE_Results')
             wb = writer.book
             ws = writer.sheets['PFE_Results']
-            # add formats
             num_fmt = wb.add_format({'num_format': '#,##0.00'})
             date_fmt = wb.add_format({'num_format': 'yyyy-mm-dd'})
-            # auto column widths and formats
             for idx, col in enumerate(df.columns):
                 width = max(df[col].astype(str).map(len).max(), len(col)) + 2
                 fmt = date_fmt if 'date' in col.lower() else num_fmt
                 ws.set_column(idx, idx, width, fmt)
-            # conditional formatting for Total_Exposure
             last_row = len(df) + 1
             ws.conditional_format(
-                f'M2:M{last_row}',
-                {'type': 'cell', 'criteria': '>', 'value': 0, 'format': wb.add_format({'bg_color':'#FFC7CE','font_color':'#9C0006'})}
+                f'M2:M{last_row}', {'type': 'cell', 'criteria': '>', 'value': 0, 'format': wb.add_format({'bg_color':'#FFC7CE','font_color':'#9C0006'})}
             )
             ws.conditional_format(
-                f'M2:M{last_row}',
-                {'type': 'cell', 'criteria': '<=', 'value': 0, 'format': wb.add_format({'bg_color':'#C6EFCE','font_color':'#006100'})}
+                f'M2:M{last_row}', {'type': 'cell', 'criteria': '<=', 'value': 0, 'format': wb.add_format({'bg_color':'#C6EFCE','font_color':'#006100'})}
             )
+
+    def create_template(self, file_path: str) -> None:
+        """
+        Create an Excel template for PFE input with data validation lists.
+        """
+        products = self.get_prod_list()
+        origins = sorted({row['destination'] for _, row in CURVE_MAPPING_LIST.iterrows()})
+        deliver_months = self.deliver_month_list()
+        aod_list = self.get_aod_list()
+        directions = ['Buy', 'Sell']
+        df = pd.DataFrame([{
+            'as_of_date': datetime.today().strftime('%Y-%m-%d'),
+            'product': products[0] if products else '',
+            'origin': origins[0] if origins else '',
+            'deliver_month': deliver_months[0],
+            'direction': directions[0],
+            'contract_price': 0.0,
+            'Existing_MTM': 0.0,
+            'position': 1
+        }])
+        with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='PFE Data Input')
+            wb = writer.book
+            ws = writer.sheets['PFE Data Input']
+            # Create hidden sheet for lists
+            list_ws = wb.add_worksheet('lists')
+            lists = [products, origins, deliver_months, aod_list, directions]
+            names = ['Products', 'Origins', 'DeliverMonths', 'AODs', 'Directions']
+            for col, lst in enumerate(lists):
+                for row, val in enumerate(lst):
+                    list_ws.write(row, col, val)
+                wb.define_name(names[col], f"=lists!${chr(65+col)}$1:${chr(65+col)}${len(lst)}")
+            list_ws.hide()
+            # Apply data validation
+            header = {col: idx for idx, col in enumerate(df.columns)}
+            max_row = 1000
+            validations = {
+                'as_of_date': 'AODs',
+                'product': 'Products',
+                'origin': 'Origins',
+                'deliver_month': 'DeliverMonths',
+                'direction': 'Directions'
+            }
+            for col, name in validations.items():
+                idx = header[col]
+                ws.data_validation(1, idx, max_row, idx, {
+                    'validate': 'list',
+                    'source': f"={name}"
+                })
+        logger.info(f"Template created at {file_path}")
 
     def run(self) -> None:
         if not os.path.exists(self.template_path):
@@ -233,18 +264,4 @@ class PFEEngine:
         df_out = self.process_dataframe(df_input)
         ts = datetime.now().strftime('%Y_%m_%d_%H%M%S')
         out_file = f"PFE_result_{ts}.xlsx"
-        self.write_results(df_out, out_file)
-        logger.info(f"PFE results saved to {out_file}")
-
-    @staticmethod
-    def create_template(file_path: str) -> None:
-        """
-        Create input template with sample data and validation.
-        """
-        # Implementation omitted for brevity; reuse existing create_pfe_template logic
-        from Sandbox.horizon.PFE_Calculator.main import create_pfe_template
-        create_pfe_template(file_path)
-
-if __name__ == '__main__':
-    engine = PFEEngine()
-    engine.run()
+        self.write_results(df_out, out
