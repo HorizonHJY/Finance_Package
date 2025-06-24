@@ -441,3 +441,32 @@ class PFEEngine:
         except Exception as e:
             logger.error(f"An error occurred during processing: {str(e)}")
             logger.exception("Stack trace:")
+
+    def diversified_pfe_varcov(contracts, corr_matrix, alpha=0.95):
+        n = len(contracts)
+        if corr_matrix.shape != (n, n):
+            raise ValueError("Correlation matrix must be n x n")
+
+
+        if not (np.allclose(corr_matrix, corr_matrix.T) or
+                np.any(np.linalg.eigvalsh(corr_matrix) < 0)):
+            raise ValueError("Correlation matrix must be symmetric positive semi-definite")
+
+        z = norm.ppf(alpha)
+        s = np.zeros(n)
+
+        for i, c in enumerate(contracts):
+            if c["direction"].lower() not in ["buy", "sell"]:
+                raise ValueError(f"Invalid direction: {c['direction']}")
+            if not (c["vol"] >= 0 and c["tte"] >= 0 and c["quantity"] >= 0):
+                raise ValueError("Negative value in vol/tte/quantity")
+
+            sign = 1 if c["direction"].lower() == "buy" else -1
+            s[i] = sign * c["vol"] * np.sqrt(c["tte"]) * c["price"] * c["quantity"]
+
+        portfolio_variance = s @ corr_matrix @ s
+        if portfolio_variance < 0:
+            raise ValueError("Negative portfolio variance (invalid correlation matrix?)")
+
+        sigma_port = np.sqrt(portfolio_variance)
+        return z * sigma_port
