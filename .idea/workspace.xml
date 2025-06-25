@@ -5,8 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2a528062-c759-4e0b-a22c-1b5533d9f359" name="更改" comment="adding diversified PFE calculate function">
-      <change afterPath="$PROJECT_DIR$/Done/Pculator/diversified.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Done/Pculator/Templates/temp2.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Done/Pculator/temp.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Done/Pculator/diversified.py" beforeDir="false" afterPath="$PROJECT_DIR$/Done/Pculator/diversified.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -65,6 +67,8 @@
     "Python.app.executor": "Run",
     "Python.diversified.executor": "Run",
     "Python.quantlib.executor": "Debug",
+    "Python.temp.executor": "Debug",
+    "Python.temp2.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
@@ -289,7 +293,15 @@
       <option name="project" value="LOCAL" />
       <updated>1750739876507</updated>
     </task>
-    <option name="localTasksCounter" value="23" />
+    <task id="LOCAL-00023" summary="adding diversified PFE calculate function">
+      <option name="closed" value="true" />
+      <created>1750819228520</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1750819228520</updated>
+    </task>
+    <option name="localTasksCounter" value="24" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -339,6 +351,11 @@
           <url>file://$PROJECT_DIR$/Practice/FE.py</url>
           <line>195</line>
           <option name="timeStamp" value="16" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/Done/Pculator/temp.py</url>
+          <line>32</line>
+          <option name="timeStamp" value="17" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
