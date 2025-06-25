@@ -4,9 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a528062-c759-4e0b-a22c-1b5533d9f359" name="更改" comment="package ini">
+    <list default="true" id="2a528062-c759-4e0b-a22c-1b5533d9f359" name="更改" comment="adding diversified PFE calculate function">
+      <change afterPath="$PROJECT_DIR$/Done/Pculator/diversified.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Done/Pculator/ini_engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/Done/Pculator/ini_engine.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -41,12 +41,12 @@
     &quot;assignee&quot;: &quot;HorizonHJY&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/HorizonHJY/Finance_Package.git",
-    "accountId": "3a5d8434-61ac-4f9c-9a8d-dee2cb441f80"
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/HorizonHJY/Finance_Package.git&quot;,
+    &quot;accountId&quot;: &quot;c6a95659-64b8-497b-a8e9-4c34b6c212e2&quot;
   }
-}]]></component>
+}</component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 8
 }</component>
@@ -55,30 +55,31 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;DefaultHtmlFileTemplate&quot;: &quot;HTML File&quot;,
-    &quot;Python tests.Python tests in FE.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python.FE.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Modeling.executor&quot;: &quot;Run&quot;,
-    &quot;Python.app.executor&quot;: &quot;Run&quot;,
-    &quot;Python.quantlib.executor&quot;: &quot;Debug&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/Horiz/PycharmProjects/Finance_Package&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "DefaultHtmlFileTemplate": "HTML File",
+    "Python tests.Python tests in FE.py.executor": "Run",
+    "Python.FE.executor": "Run",
+    "Python.Modeling.executor": "Run",
+    "Python.app.executor": "Run",
+    "Python.diversified.executor": "Run",
+    "Python.quantlib.executor": "Debug",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "git-widget-placeholder": "main",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "C:/Users/Horiz/PycharmProjects/Finance_Package",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.lookFeel",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\Horiz\PycharmProjects\Finance_Package\Done" />
@@ -88,8 +89,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-b26f3e71634d-JavaScript-PY-251.26094.141" />
-        <option value="bundled-python-sdk-9f8e2b94138c-36ea0e71a18c-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.26094.141" />
+        <option value="bundled-python-sdk-0e3be3396995-c546a90a8094-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-242.23339.19" />
       </set>
     </attachedChunks>
   </component>
@@ -111,7 +111,7 @@
       <workItem from="1750456861375" duration="53000" />
       <workItem from="1750456924306" duration="233000" />
       <workItem from="1750599863502" duration="14928000" />
-      <workItem from="1750734627534" duration="1455000" />
+      <workItem from="1750734627534" duration="1684000" />
     </task>
     <task id="LOCAL-00001" summary="1">
       <option name="closed" value="true" />
@@ -281,7 +281,15 @@
       <option name="project" value="LOCAL" />
       <updated>1750449528623</updated>
     </task>
-    <option name="localTasksCounter" value="22" />
+    <task id="LOCAL-00022" summary="adding diversified PFE calculate function">
+      <option name="closed" value="true" />
+      <created>1750739876507</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1750739876507</updated>
+    </task>
+    <option name="localTasksCounter" value="23" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -311,7 +319,8 @@
     <MESSAGE value="准备封装函数 做参考" />
     <MESSAGE value="傻逼人 改需求 但是这是工作" />
     <MESSAGE value="package ini" />
-    <option name="LAST_COMMIT_MESSAGE" value="package ini" />
+    <MESSAGE value="adding diversified PFE calculate function" />
+    <option name="LAST_COMMIT_MESSAGE" value="adding diversified PFE calculate function" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
