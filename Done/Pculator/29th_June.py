@@ -1,20 +1,20 @@
 import os
 import math
 import logging
-from datetime import datetime, date, timedelta
-from dateutil.relativedelta import relativedelta
-from typing import Optional, List
 import numpy as np
 import pandas as pd
 import holidays
 import jv
+from datetime import datetime, date, timedelta
+from dateutil.relativedelta import relativedelta
+from typing import Optional, List
+from xlsxwriter.utility import xl_col_to_name
 from Sandbox.horizon.PFE_Calculator.models.common import (
     CURVE_MAPPING_LIST,
     MONTH_CODE_MAP,
     querys,
     prd_db,
 )
-from xlsxwriter.utility import xl_col_to_name
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -214,19 +214,18 @@ class PFEEngine:
         # Return PFE based on direction
         return price * (-1 + math.exp(up)) if direction == 'buy' else price * (1 - math.exp(down))
 
-    # ========== 新增函数: 多样化PFE计算 ==========
     @staticmethod
     def cov_to_corr(cov_matrix: np.ndarray) -> np.ndarray:
-        """将协方差矩阵转换为相关系数矩阵"""
+        """Convert covariance matrix to correlation matrix"""
         std_dev = np.sqrt(np.diag(cov_matrix))
         denom = np.outer(std_dev, std_dev)
         corr_matrix = cov_matrix / denom
         return corr_matrix
 
     def get_cov_matrix(self, risk_curve_list: list, as_of_d: date, history_length: int = 121) -> np.ndarray:
-        """计算风险曲线之间的协方差矩阵"""
+        """Compute covariance matrix for risk curves"""
 
-        # 获取初始日期
+        # Get initial date
         def get_ini_date(as_of_date: date, his_len: int) -> date:
             us_holidays = holidays.US()
             end_date = as_of_date
@@ -236,7 +235,7 @@ class PFEEngine:
             target_date = biz_days[-(his_len + 2)]
             return target_date.date()
 
-        # 计算EWMA波动率
+        # Compute EWMA volatility
         def compute_vol_ewma(price_df: pd.DataFrame, lambda_: float = 0.94) -> np.ndarray:
             log_returns = np.log(price_df / price_df.shift(1)).dropna()
             n = len(log_returns)
@@ -268,71 +267,6 @@ class PFEEngine:
         )
         return compute_vol_ewma(price_df)
 
-    def calc_diversified_pfe(self, df: pd.DataFrame) -> pd.DataFrame:
-        """计算多样化PFE和风险贡献百分比"""
-        # 只处理有有效PFE的合约
-        valid_df = df[df['PFE_Output'] != 0].copy()
-        if valid_df.empty:
-            df['diversified_pfe'] = 0.0
-            df['percentage'] = 0.0
-            return df
-
-        # 获取唯一风险曲线
-        unique_curves = valid_df['Risk_Curve'].unique().tolist()
-        as_of_date = valid_df['as_of_date'].iloc[0]
-
-        # 计算相关系数矩阵
-        try:
-            cov_matrix = self.get_cov_matrix(unique_curves, as_of_date)
-            corr_matrix = self.cov_to_corr(cov_matrix)
-        except Exception as e:
-            logger.error(f"计算相关系数矩阵失败: {str(e)}")
-            # 使用单位矩阵作为回退
-            corr_matrix = np.eye(len(unique_curves))
-
-        # 按风险曲线分组汇总
-        grouped = valid_df.groupby('Risk_Curve', as_index=False).agg(
-            curve_pfe=('PFE_Output', 'sum')
-        )
-
-        # 确保顺序与相关系数矩阵一致
-        curve_to_idx = {curve: idx for idx, curve in enumerate(unique_curves)}
-        grouped['idx'] = grouped['Risk_Curve'].map(curve_to_idx)
-        grouped = grouped.sort_values('idx')
-
-        # 计算多样化PFE
-        s = grouped['curve_pfe'].values
-        port_variance = s.T @ corr_matrix @ s
-        total_pfe = 1.645 * np.sqrt(port_variance)  # z = 1.645 (95% confidence)
-
-        # 计算边际贡献
-        marginal_contrib = corr_matrix @ s / np.sqrt(port_variance)
-        risk_contrib = s * marginal_contrib
-        risk_contrib *= total_pfe / risk_contrib.sum()
-
-        # 映射回原始数据
-        contrib_map = dict(zip(grouped['Risk_Curve'], risk_contrib))
-        valid_df['curve_total_pfe'] = valid_df['Risk_Curve'].map(
-            lambda x: grouped[grouped['Risk_Curve'] == x]['curve_pfe'].iloc[0]
-        )
-        valid_df['diversified_pfe'] = valid_df.apply(
-            lambda r: r['PFE_Output'] * contrib_map[r['Risk_Curve'] / r['curve_total_pfe']
-            if r['curve_total_pfe'] != 0 else 0.0,
-            axis = 1
-        )
-        valid_df['percentage'] = valid_df['diversified_pfe'] / total_pfe
-
-        # 合并回原始DataFrame
-        df = df.merge(
-            valid_df[['diversified_pfe', 'percentage']],
-            how='left',
-            left_index=True,
-            right_index=True
-        ).fillna({'diversified_pfe': 0.0, 'percentage': 0.0})
-
-        return df
-
-    # ========== 修改process_dataframe方法 ==========
     def process_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Full PFE pipeline: date conversion, curve matching, vol fetch, PFE & exposure.
@@ -392,19 +326,72 @@ class PFEEngine:
         df['PFE_Output'] = df['PFE_Value'] * df['position']
         df['Total_Exposure'] = df['PFE_Output'] + df['Existing_MTM']
 
-        # 新增：计算多样化PFE和百分比
-        df = self.calc_diversified_pfe(df)
+        # ===== 优化后的多样化PFE计算 =====
+        # 初始化新列
+        df['diversified_pfe'] = 0.0
+        df['percentage'] = 0.0
+
+        # 只处理有有效PFE的合约
+        valid_mask = df['PFE_Output'] != 0
+        valid_df = df[valid_mask]
+
+        if not valid_df.empty:
+            # 获取所有有效合约的风险曲线（每个都是唯一的）
+            unique_curves = valid_df['Risk_Curve'].tolist()
+            as_of_date = valid_df['as_of_date'].iloc[0]
+
+            # 计算相关系数矩阵
+            try:
+                cov_matrix = self.get_cov_matrix(unique_curves, as_of_date)
+                corr_matrix = self.cov_to_corr(cov_matrix)
+            except Exception as e:
+                logger.error(f"计算相关系数矩阵失败: {str(e)}")
+                # 使用单位矩阵作为回退
+                corr_matrix = np.eye(len(unique_curves))
+
+            # 直接使用每个合约的PFE_Output作为向量s
+            s = valid_df['PFE_Output'].values
+
+            # 计算组合方差
+            port_variance = s.T @ corr_matrix @ s
+
+            # 检查方差非负
+            if port_variance < 0:
+                logger.warning("负的资产组合方差，使用未分散PFE")
+                total_pfe = np.sum(np.abs(s)) * 1.645
+            else:
+                total_pfe = 1.645 * np.sqrt(port_variance)  # z = 1.645 (95% confidence)
+
+            # 计算风险贡献
+            if port_variance > 0:
+                # 计算边际贡献
+                marginal_contrib = corr_matrix @ s / np.sqrt(port_variance)
+                # 计算每个合约的风险贡献
+                risk_contrib = s * marginal_contrib
+            else:
+                # 如果方差为0，则直接使用原始PFE值
+                risk_contrib = s
+
+            # 归一化风险贡献，使其总和等于总PFE
+            if (contrib_sum := risk_contrib.sum()) != 0:
+                risk_contrib *= total_pfe / contrib_sum
+
+            # 直接赋值给多样化PFE列
+            df.loc[valid_mask, 'diversified_pfe'] = risk_contrib
+
+            # 计算百分比
+            if total_pfe != 0:
+                df.loc[valid_mask, 'percentage'] = risk_contrib / total_pfe
 
         return df
 
-    # ========== 修改write_results方法 ==========
     def write_results(self, df: pd.DataFrame, path: str) -> None:
         """
         Export DataFrame to Excel with formatting and summary row.
         """
         try:
             # 添加汇总行
-            summary_row = pd.Series({
+            summary_data = {
                 'as_of_date': 'Total',
                 'product': '',
                 'origin': '',
@@ -422,7 +409,14 @@ class PFEEngine:
                 'diversified_pfe': df['diversified_pfe'].sum(),
                 'percentage': df['percentage'].sum(),
                 'Total_Exposure': df['Total_Exposure'].sum()
-            })
+            }
+
+            # 确保所有列都存在
+            for col in df.columns:
+                if col not in summary_data:
+                    summary_data[col] = ''
+
+            summary_row = pd.Series(summary_data)
             df_summary = pd.DataFrame([summary_row])
             df = pd.concat([df, df_summary], ignore_index=True)
 
@@ -453,8 +447,8 @@ class PFEEngine:
                     ws.write(0, col_idx, col_name, fmt_header)
 
                 # Format summary row (last row)
-                last_row = len(df)
-                for col_idx in range(len(df.columns)):
+                last_row = len(df) - 1
+                for col_idx, col_name in enumerate(df.columns):
                     ws.write(last_row, col_idx, df.iloc[-1, col_idx], fmt_summary)
 
                 # Apply conditional formatting to Total_Exposure
@@ -489,7 +483,6 @@ class PFEEngine:
             logger.error(f"Failed to write results to Excel: {str(e)}")
             raise
 
-    # ========== 其他方法保持不变 ==========
     def create_template(self, path: str) -> None:
         """
         Generate PFE_template.xlsx with data validation lists.
