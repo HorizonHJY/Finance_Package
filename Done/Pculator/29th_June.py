@@ -387,7 +387,7 @@ class PFEEngine:
 
     def write_results(self, df: pd.DataFrame, path: str) -> None:
         """
-        Export DataFrame to Excel with formatting and summary row.
+        Export DataFrame to Excel with clean formatting and summary row.
         """
         try:
             # 创建汇总行
@@ -424,34 +424,34 @@ class PFEEngine:
                 result_df.to_excel(writer, index=False, sheet_name='PFE_Results')
                 wb, ws = writer.book, writer.sheets['PFE_Results']
 
-                # Create formats
+                # 创建基本格式
+                fmt_header = wb.add_format({'bold': True})
+                fmt_summary = wb.add_format({'bold': True})
                 fmt_num = wb.add_format({'num_format': '#,##0.00'})
                 fmt_date = wb.add_format({'num_format': 'yyyy-mm-dd'})
-                fmt_header = wb.add_format({'bold': True, 'bg_color': '#D9D9D9'})
-                fmt_summary = wb.add_format({'bold': True, 'bg_color': '#FFFF00'})
 
-                # Apply column formatting
+                # 应用列格式
                 for col_idx, col_name in enumerate(result_df.columns):
-                    # Set column width
+                    # 设置列宽
                     width = max(result_df[col_name].astype(str).map(len).max(), len(col_name)) + 2
                     ws.set_column(col_idx, col_idx, width)
 
-                    # Apply format based on column type
+                    # 根据列类型应用格式
                     if 'date' in col_name.lower():
                         ws.set_column(col_idx, col_idx, width, fmt_date)
                     elif any(k in col_name.lower() for k in ['price', 'mtm', 'pfe', 'exposure', 'vol', 'percentage']):
                         ws.set_column(col_idx, col_idx, width, fmt_num)
 
-                # Format header
+                # 格式化标题行
                 for col_idx, col_name in enumerate(result_df.columns):
                     ws.write(0, col_idx, col_name, fmt_header)
 
-                # Format summary row (last row)
-                last_row = len(result_df)
+                # 格式化汇总行（最后一行）
+                last_row = len(result_df) - 1
                 for col_idx in range(len(result_df.columns)):
-                    ws.write(last_row - 1, col_idx, result_df.iloc[-1, col_idx], fmt_summary)
+                    ws.write(last_row, col_idx, result_df.iloc[last_row, col_idx], fmt_summary)
 
-                # Apply conditional formatting to Total_Exposure (不包括汇总行)
+                # 应用条件格式到Total_Exposure（不包括汇总行）
                 try:
                     col_idx = result_df.columns.get_loc('Total_Exposure')
                     col_letter = xl_col_to_name(col_idx)
@@ -460,7 +460,7 @@ class PFEEngine:
                     if num_rows > 0:
                         range_str = f'{col_letter}2:{col_letter}{num_rows}'
 
-                        # Positive exposure (red)
+                        # 正敞口（红色）
                         ws.conditional_format(range_str, {
                             'type': 'cell',
                             'criteria': '>',
@@ -468,7 +468,7 @@ class PFEEngine:
                             'format': wb.add_format({'bg_color': '#FFC7CE'})
                         })
 
-                        # Non-positive exposure (green)
+                        # 非正敞口（绿色）
                         ws.conditional_format(range_str, {
                             'type': 'cell',
                             'criteria': '<=',
