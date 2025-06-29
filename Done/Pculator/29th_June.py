@@ -390,7 +390,7 @@ class PFEEngine:
         Export DataFrame to Excel with formatting and summary row.
         """
         try:
-            # 添加汇总行
+            # 创建汇总行
             summary_data = {
                 'as_of_date': 'Total',
                 'product': '',
@@ -416,24 +416,24 @@ class PFEEngine:
                 if col not in summary_data:
                     summary_data[col] = ''
 
+            # 创建汇总行并添加到DataFrame
             summary_row = pd.Series(summary_data)
-            df_summary = pd.DataFrame([summary_row])
-            df = pd.concat([df, df_summary], ignore_index=True)
+            result_df = pd.concat([df, pd.DataFrame([summary_row])], ignore_index=True)
 
             with pd.ExcelWriter(path, engine='xlsxwriter') as writer:
-                df.to_excel(writer, index=False, sheet_name='PFE_Results')
+                result_df.to_excel(writer, index=False, sheet_name='PFE_Results')
                 wb, ws = writer.book, writer.sheets['PFE_Results']
 
                 # Create formats
                 fmt_num = wb.add_format({'num_format': '#,##0.00'})
                 fmt_date = wb.add_format({'num_format': 'yyyy-mm-dd'})
                 fmt_header = wb.add_format({'bold': True, 'bg_color': '#D9D9D9'})
-                fmt_summary = wb.add_format({'bold': True, 'top': 1, 'bg_color': '#FFFF00'})
+                fmt_summary = wb.add_format({'bold': True, 'bg_color': '#FFFF00'})
 
                 # Apply column formatting
-                for col_idx, col_name in enumerate(df.columns):
+                for col_idx, col_name in enumerate(result_df.columns):
                     # Set column width
-                    width = max(df[col_name].astype(str).map(len).max(), len(col_name)) + 2
+                    width = max(result_df[col_name].astype(str).map(len).max(), len(col_name)) + 2
                     ws.set_column(col_idx, col_idx, width)
 
                     # Apply format based on column type
@@ -443,22 +443,22 @@ class PFEEngine:
                         ws.set_column(col_idx, col_idx, width, fmt_num)
 
                 # Format header
-                for col_idx, col_name in enumerate(df.columns):
+                for col_idx, col_name in enumerate(result_df.columns):
                     ws.write(0, col_idx, col_name, fmt_header)
 
                 # Format summary row (last row)
-                last_row = len(df) - 1
-                for col_idx, col_name in enumerate(df.columns):
-                    ws.write(last_row, col_idx, df.iloc[-1, col_idx], fmt_summary)
+                last_row = len(result_df)
+                for col_idx in range(len(result_df.columns)):
+                    ws.write(last_row - 1, col_idx, result_df.iloc[-1, col_idx], fmt_summary)
 
-                # Apply conditional formatting to Total_Exposure
+                # Apply conditional formatting to Total_Exposure (不包括汇总行)
                 try:
-                    col_idx = df.columns.get_loc('Total_Exposure')
+                    col_idx = result_df.columns.get_loc('Total_Exposure')
                     col_letter = xl_col_to_name(col_idx)
-                    num_rows = len(df) - 1  # Exclude summary row
+                    num_rows = len(result_df) - 1  # 排除汇总行
 
                     if num_rows > 0:
-                        range_str = f'{col_letter}2:{col_letter}{num_rows + 1}'
+                        range_str = f'{col_letter}2:{col_letter}{num_rows}'
 
                         # Positive exposure (red)
                         ws.conditional_format(range_str, {
