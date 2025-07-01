@@ -10,37 +10,77 @@
     table { width: 100%; }
     th, td { padding: 8px 12px; }
     .highlight { background-color: #ffe6e6; }
+    .text-center { text-align: center; }
   </style>
 </head>
 <body>
+  <!-- 格式化宏定义 -->
+  {% macro fmt_float(val) -%}
+    {%- if val is not none and val != '' -%}
+      {{ "{:,.2f}".format(val) }}
+    {%- endif %}
+  {%- endmacro %}
+
   <div class="container">
     <h2>PFE Batch Calculation Results</h2>
     {% if rows %}
     <table class="table table-bordered table-striped">
       <thead>
         <tr>
-          {% if 'commodity'      in columns_dict %}<th>Product</th>{% endif %}
-          {% if 'destination'    in columns_dict %}<th>Origin</th>{% endif %}
-          {% if 'direction'      in columns_dict %}<th>Direction</th>{% endif %}
-          {% if 'deliver_date'   in columns_dict %}<th>Deliver Date</th>{% endif %}
-          {% if 'risk_curve'     in columns_dict %}<th>Risk Curve</th>{% endif %}
-          {% if 'vol'            in columns_dict %}<th>Ann Volatility</th>{% endif %}
-          {% if 'time_to_exp'    in columns_dict %}<th>Time to Expiry</th>{% endif %}
-          {% if 'exposure'       in columns_dict %}<th>P95 Price Change(USD/MT)</th>{% endif %}
+          {% if 'as of date' in columns_dict %}<th>As Of Date</th>{% endif %}
+          {% if 'commodity' in columns_dict %}<th>Product</th>{% endif %}
+          {% if 'destination' in columns_dict %}<th>Origin</th>{% endif %}
+          {% if 'deliver_date' in columns_dict %}<th>Deliver Date</th>{% endif %}
+          {% if 'direction' in columns_dict %}<th>Direction</th>{% endif %}
+          {% if 'price' in columns_dict %}<th>Price</th>{% endif %}
+          {% if 'position' in columns_dict %}<th>Position</th>{% endif %}
+          {% if 'exl_min' in columns_dict %}<th>Exl Min</th>{% endif %}
+          {% if 'risk_curve' in columns_dict %}<th>Risk Curve</th>{% endif %}
+          {% if 'vol' in columns_dict %}<th>Vol</th>{% endif %}
+          {% if 'time_to_exp' in columns_dict %}<th>Time To Exp</th>{% endif %}
+          {% if 'exposure' in columns_dict %}<th>Exposure</th>{% endif %}
           {% if 'total_exposure' in columns_dict %}<th>PFE(k$)</th>{% endif %}
+          {% if 'diversified_pfe' in columns_dict %}<th>Diversified PFE</th>{% endif %}
+          {% if 'percentage %' in columns_dict %}<th>Percentage %</th>{% endif %}
         </tr>
       </thead>
       <tbody>
         {% for row in rows %}
-          {% if 'commodity'      in columns_dict %}<td>{{ row['commodity'] }}</td>{% endif %}
-          {% if 'destination'    in columns_dict %}<td>{{ row['destination'] }}</td>{% endif %}
-          {% if 'direction'      in columns_dict %}<td>{{ row['direction'] }}</td>{% endif %}
-          {% if 'deliver_date'   in columns_dict %}<td>{{ row['deliver_date'] }}</td>{% endif %}
-          {% if 'risk_curve'     in columns_dict %}<td>{{ row['risk_curve'] }}</td>{% endif %}
-          {% if 'vol'            in columns_dict %}<td>{{ row['vol'] }}</td>{% endif %}
-          {% if 'time_to_exp'    in columns_dict %}<td>{{ row['time_to_exp'] }}</td>{% endif %}
-          {% if 'exposure'       in columns_dict %}<td>{{ row['exposure'] }}</td>{% endif %}
-          {% if 'total_exposure' in columns_dict %}<td>{{ row['total_exposure'] }}</td>{% endif %}
+        <tr>
+          {% if 'as of date' in columns_dict %}<td>{{ row['as of date'] }}</td>{% endif %}
+          {% if 'commodity' in columns_dict %}<td>{{ row['commodity'] }}</td>{% endif %}
+          {% if 'destination' in columns_dict %}<td>{{ row['destination'] }}</td>{% endif %}
+          {% if 'deliver_date' in columns_dict %}<td>{{ row['deliver_date'] }}</td>{% endif %}
+          {% if 'direction' in columns_dict %}<td>{{ row['direction'] }}</td>{% endif %}
+          {% if 'price' in columns_dict %}<td>{{ row['price'] }}</td>{% endif %}
+          {% if 'position' in columns_dict %}<td>{{ row['position'] }}</td>{% endif %}
+          {% if 'exl_min' in columns_dict %}<td>{{ row['exl_min'] }}</td>{% endif %}
+          {% if 'risk_curve' in columns_dict %}<td>{{ row['risk_curve'] }}</td>{% endif %}
+
+          <!-- 应用浮点数格式化宏 -->
+          {% if 'vol' in columns_dict %}
+            <td class="text-center">{{ fmt_float(row['vol']) }}</td>
+          {% endif %}
+
+          {% if 'time_to_exp' in columns_dict %}
+            <td class="text-center">{{ fmt_float(row['time_to_exp']) }}</td>
+          {% endif %}
+
+          {% if 'exposure' in columns_dict %}
+            <td class="text-center">{{ fmt_float(row['exposure']) }}</td>
+          {% endif %}
+
+          {% if 'total_exposure' in columns_dict %}
+            <td class="text-center">{{ fmt_float(row['total_exposure']) }}</td>
+          {% endif %}
+
+          {% if 'diversified_pfe' in columns_dict %}
+            <td class="text-center">{{ fmt_float(row['diversified_pfe']) }}</td>
+          {% endif %}
+
+          {% if 'percentage %' in columns_dict %}
+            <td class="text-center">{{ fmt_float(row['percentage %']) }}</td>
+          {% endif %}
         </tr>
         {% endfor %}
       </tbody>
@@ -52,60 +92,16 @@
       <p>No data available. Please submit the form first.</p>
     {% endif %}
   </div>
-<script>
-document.getElementById('exportBtn').addEventListener('click', function() {
-    // 获取表格数据
-    const rows = [];
-    const headers = [];
 
-    // 添加表头（不需要特殊处理，一般不含逗号）
-    document.querySelectorAll('table thead th').forEach(th => {
-        headers.push(th.innerText);
-    });
-    rows.push(headers.join(','));
-
-    // 添加表格内容（关键修改点）
-    document.querySelectorAll('table tbody tr').forEach(tr => {
-        const row = [];
-        tr.querySelectorAll('td').forEach(td => {
-            let text = td.innerText;
-            // 如果内容包含逗号或双引号，用双引号包裹并转义已有双引号
-            if (text.includes(',') || text.includes('"')) {
-                text = `"${text.replace(/"/g, '""')}"`; // 转义双引号
-            }
-            row.push(text);
-        });
-        rows.push(row.join(','));
-    });
-
-    // 生成 CSV 并下载
-    const csvContent = rows.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'PFE_Results.csv');
-    link.click();
-});
-
-</script>
- <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script>
   document.getElementById('exportBtn').addEventListener('click', function() {
-      // 获取表格元素
       const table = document.querySelector('table');
-
-      // 将 HTML 表格转换为 Excel 工作簿
       const workbook = XLSX.utils.table_to_book(table, {
-          sheet: "PFE Results", // 自定义 Sheet 名称
-          raw: true            // 保留原始数据格式（如数字、日期）
+          sheet: "PFE Results",
+          raw: true
       });
-
-      // 生成 Excel 文件并下载
-      XLSX.writeFile(workbook, 'PFE_Results.xlsx', {
-          bookType: 'xlsx',    // 文件类型
-          compression: true    // 启用压缩（减小文件大小）
-      });
+      XLSX.writeFile(workbook, 'PFE_Results.xlsx');
   });
   </script>
 </body>
