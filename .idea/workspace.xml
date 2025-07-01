@@ -323,7 +323,15 @@
       <option name="project" value="LOCAL" />
       <updated>1751226386259</updated>
     </task>
-    <option name="localTasksCounter" value="27" />
+    <task id="LOCAL-00027" summary="adding diversified PFE calculate function">
+      <option name="closed" value="true" />
+      <created>1751227273669</created>
+      <option name="number" value="00027" />
+      <option name="presentableId" value="LOCAL-00027" />
+      <option name="project" value="LOCAL" />
+      <updated>1751227273669</updated>
+    </task>
+    <option name="localTasksCounter" value="28" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

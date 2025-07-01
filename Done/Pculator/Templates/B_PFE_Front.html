@@ -17,15 +17,18 @@
       <div>
         <button type="button" id="add-row-btn" class="btn btn-primary">Add New Line</button>
       </div>
-      <div>
-        <input type="file" id="excel-upload" accept=".xlsx, .xls" style="display: none;">
-        <button type="button" class="btn btn-success me-2" onclick="document.getElementById('excel-upload').click()">
-          Upload by template
-        </button>
-        <button type="button" class="btn btn-info" onclick="downloadTemplate()">
-          Download Template
-        </button>
-      </div>
+     <div>
+       <input type="file" id="excel-upload" accept=".xlsx, .xls" style="display: none;">
+       <button type="button" class="btn btn-success me-2" onclick="document.getElementById('excel-upload').click()">
+         Upload by template
+       </button>
+       <button type="button" class="btn btn-info" onclick="downloadTemplate()">
+         Download Template
+       </button>
+      <button type="button" id="export-table-btn" class="btn btn-warning" onclick="exportTable()">
+        Export Table
+      </button>
+     </div>
     </div>
 
     <form action="{{ url_for('/credit/pfe_adhoc_run') }}" method="post">
@@ -239,6 +242,22 @@
     // 下载文件
     XLSX.writeFile(wb, "PFE_Template.xlsx");
   }
+
+  function exportTable() {
+    // 1. 新建工作簿
+    const wb = XLSX.utils.book_new();
+    // 2. 将 HTML 表格转换为工作表
+    const ws = XLSX.utils.table_to_sheet(document.getElementById('selection-table'));
+    // 3. 将工作表添加到工作簿
+    XLSX.utils.book_append_sheet(wb, ws, 'InputData');
+    // 4. 触发文件下载
+    XLSX.writeFile(wb, 'PFE_InputData.xlsx');
+  }
+
+  // （可选）若你喜欢用 jQuery 绑定：
+  // $('#export-table-btn').on('click', exportTable);
+
+
 </script>
 
 <style>
