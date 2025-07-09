@@ -215,28 +215,42 @@
     };
     reader.readAsArrayBuffer(file);
   });
+  function getSevenDaysAgo() {
+    const today = new Date();
+    const d = new Date(today);
+    d.setDate(d.getDate() - 7);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
 
   // 下载模板功能
   function downloadTemplate() {
-    // 创建示例数据
+    // 1. 先拿到“七天前”的日期
+    const asOfDate = getSevenDaysAgo();
+
+    // 2. 构建示例数据，把 As Of Date 字段放到最前面
     const templateData = [
       {
-        "Product": "Product1",
-        "Origin": "Country1",
-        "Buy/Sell": "Buy",
+        "As Of Date": asOfDate,
+        "Product":       "Product1",
+        "Origin":        "Country1",
+        "Buy/Sell":      "Buy",
         "Deliver Month": "Jan-25",
-        "Price ($/MT)": 100,
+        "Price ($/MT)":  100,
         "Position (MT)": 1000,
-        "Existing MTM": 5000
+        "Existing MTM":  5000
       },
       {
-        "Product": "Product2",
-        "Origin": "Country2",
-        "Buy/Sell": "Sell",
+        "As Of Date": asOfDate,
+        "Product":       "Product2",
+        "Origin":        "Country2",
+        "Buy/Sell":      "Sell",
         "Deliver Month": "Feb-25",
-        "Price ($/MT)": 150,
+        "Price ($/MT)":  150,
         "Position (MT)": 2000,
-        "Existing MTM": 3000
+        "Existing MTM":  3000
       }
     ];
 
