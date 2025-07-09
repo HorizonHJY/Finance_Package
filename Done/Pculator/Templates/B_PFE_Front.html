@@ -30,7 +30,13 @@
       </button>
      </div>
     </div>
-
+    <label for="global-as-of-date">As Of Date (Global):</label>
+    <select id="global-as-of-date" class="as-of-date mb-3">
+      <option value="">Select As Of Date</option>
+      {% for aodate in aod_list %}
+        <option value="{{ aodate }}">{{ aodate }}</option>
+      {% endfor %}
+    </select>
     <form action="{{ url_for('/credit/pfe_adhoc_run') }}" method="post">
       <table id="selection-table" class="table table-striped">
         <thead>
@@ -256,6 +262,11 @@
 
   // （可选）若你喜欢用 jQuery 绑定：
   // $('#export-table-btn').on('click', exportTable);
+  $('#global-as-of-date').on('change', function() {
+  const val = $(this).val();
+  // 找到所有每行的 as-of-date 下拉框（如果是 class="as-of-date"）
+  $('select.as-of-date').val(val);
+  });
 
 
 </script>
