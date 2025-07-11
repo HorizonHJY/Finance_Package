@@ -5,9 +5,17 @@
     <meta charset="UTF-8">
     <title>Server Error</title>
 </head>
-<body>
-    <h1>Something went wrong!</h1>
-    <p>{{ error_msg }}</p>
-    <a href="/">Return Home</a>
-</body>
+  <div class="d-flex align-items-center justify-content-center vh-100 bg-light">
+    <div class="card shadow-sm" style="max-width: 600px; width: 100%;">
+      <div class="card-body text-center p-5">
+        <h1 class="display-4 text-danger mb-3">Oops!</h1>
+        <p class="lead mb-4">Something went wrong!</p>
+        <div class="alert alert-warning text-left" role="alert">
+          <strong>Error Details:</strong><br>
+          {{ error_msg }}
+        </div>
+        <a href="/" class="btn btn-primary btn-lg mt-3">Return Home</a>
+      </div>
+    </div>
+  </div>
 </html>
