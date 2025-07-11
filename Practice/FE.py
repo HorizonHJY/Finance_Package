@@ -2,8 +2,6 @@ from typing import List, Tuple, Optional
 from bisect import bisect_right
 import pandas as pd
 from datetime import datetime, date
-
-from astropy.cosmology import available
 from dateutil.relativedelta import relativedelta
 import math
 
